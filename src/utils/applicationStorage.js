@@ -1,0 +1,143 @@
+// 投递记录存储工具
+const STORAGE_KEY = 'jobApplications'
+
+export function getApplications() {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored) {
+      return JSON.parse(stored)
+    }
+  } catch (error) {
+    console.error('读取投递记录失败:', error)
+  }
+  return []
+}
+
+export function saveApplication(application) {
+  try {
+    const applications = getApplications()
+    const newApplication = {
+      id: Date.now().toString(),
+      date: new Date().toISOString(),
+      ...application
+    }
+    applications.unshift(newApplication) // 最新的在前面
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(applications))
+    return newApplication
+  } catch (error) {
+    console.error('保存投递记录失败:', error)
+    throw error
+  }
+}
+
+export function deleteApplication(id) {
+  try {
+    const applications = getApplications()
+    const filtered = applications.filter(app => app.id !== id)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered))
+    return true
+  } catch (error) {
+    console.error('删除投递记录失败:', error)
+    throw error
+  }
+}
+
+export function getApplicationsByDate(date) {
+  const applications = getApplications()
+  const targetDate = new Date(date).toDateString()
+  return applications.filter(app => {
+    const appDate = new Date(app.date).toDateString()
+    return appDate === targetDate
+  })
+}
+
+export function getApplicationsByMonth(year, month) {
+  const applications = getApplications()
+  return applications.filter(app => {
+    const appDate = new Date(app.date)
+    return appDate.getFullYear() === year && appDate.getMonth() === month
+  })
+}
+
+export function getDailyCounts() {
+  const applications = getApplications()
+  const counts = {}
+  
+  applications.forEach(app => {
+    const date = new Date(app.date).toDateString()
+    counts[date] = (counts[date] || 0) + 1
+  })
+  
+  return counts
+}
+
+// 按岗位统计投递数量
+export function getPositionCounts(applications = null) {
+  const apps = applications || getApplications()
+  const counts = {}
+  
+  apps.forEach(app => {
+    const position = app.position || '未知职位'
+    counts[position] = (counts[position] || 0) + 1
+  })
+  
+  // 转换为数组并按数量排序
+  return Object.entries(counts)
+    .map(([position, count]) => ({ position, count }))
+    .sort((a, b) => b.count - a.count)
+}
+
+// 按日期筛选应用记录
+export function filterApplicationsByDateRange(applications, filterType, dateValue) {
+  if (!dateValue) return applications
+  
+  const filterDate = new Date(dateValue)
+  
+  return applications.filter(app => {
+    const appDate = new Date(app.date)
+    
+    switch (filterType) {
+      case 'year':
+        return appDate.getFullYear() === filterDate.getFullYear()
+      case 'month':
+        return appDate.getFullYear() === filterDate.getFullYear() && 
+               appDate.getMonth() === filterDate.getMonth()
+      case 'day':
+        return appDate.toDateString() === filterDate.toDateString()
+      default:
+        return true
+    }
+  })
+}
+
+export function exportToCSV() {
+  const applications = getApplications()
+  
+  if (applications.length === 0) {
+    throw new Error('没有投递记录可导出')
+  }
+  
+  // CSV 头部
+  const headers = ['日期', '公司名称', '职位', '岗位描述', '简历内容', '推荐信内容']
+  const rows = [headers.join(',')]
+  
+  // 数据行
+  applications.forEach(app => {
+    const row = [
+      new Date(app.date).toLocaleString('zh-CN'),
+      `"${(app.companyName || '').replace(/"/g, '""')}"`,
+      `"${(app.position || '').replace(/"/g, '""')}"`,
+      `"${(app.jobDescription || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`,
+      `"${(app.resume || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`,
+      `"${(app.coverLetter || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`,
+    ]
+    rows.push(row.join(','))
+  })
+  
+  return rows.join('\n')
+}
+
+export function exportToJSON() {
+  const applications = getApplications()
+  return JSON.stringify(applications, null, 2)
+}
