@@ -1,13 +1,13 @@
 @echo off
 chcp 65001 >nul
 echo ============================================
-echo 修复 API Key 并推送到 GitHub
+echo 提交并推送到 GitHub
 echo ============================================
 echo.
 
 cd /d "%~dp0"
 
-echo [1/4] 添加修改后的文件...
+echo [1/4] 添加所有更改的文件...
 git add .
 if errorlevel 1 (
     echo ❌ 添加文件失败
@@ -17,12 +17,12 @@ if errorlevel 1 (
 echo ✅ 文件已添加
 echo.
 
-echo [2/4] 修改最后一次提交...
-git commit --amend -m "Initial commit: 简历大师项目"
+echo [2/4] 提交更改...
+git commit -m "优化项目：删除无关脚本，完善 README 文档"
 if errorlevel 1 (
-    echo ⚠️  提交修改失败，可能没有更改
+    echo ⚠️  提交失败，可能没有更改需要提交
 ) else (
-    echo ✅ 提交已修改
+    echo ✅ 更改已提交
 )
 echo.
 
@@ -30,17 +30,8 @@ echo [3/4] 检查远程仓库...
 git remote -v
 echo.
 
-echo [4/4] 强制推送到 GitHub...
-echo ⚠️  注意：这将覆盖远程仓库的历史记录
-echo.
-set /p confirm="确认推送？(Y/N): "
-if /i not "%confirm%"=="Y" (
-    echo 已取消推送
-    pause
-    exit /b 0
-)
-
-git push -u origin main --force
+echo [4/4] 推送到 GitHub...
+git push origin main
 if errorlevel 1 (
     echo.
     echo ❌ 推送失败！
@@ -48,6 +39,11 @@ if errorlevel 1 (
     echo 可能的原因：
     echo 1. 需要配置 GitHub 认证（Personal Access Token）
     echo 2. 网络连接问题
+    echo 3. 远程仓库有新的提交，需要先拉取
+    echo.
+    echo 如果远程有新的提交，可以尝试：
+    echo   git pull origin main --rebase
+    echo   git push origin main
     echo.
 ) else (
     echo.
