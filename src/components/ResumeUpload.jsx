@@ -1,9 +1,26 @@
 import { useState, useEffect } from 'react'
+import { getPrompts as getResumePrompts, getPromptById as getResumePromptById } from '../utils/resumePromptStorage'
+import { getPrompts as getCoverLetterPrompts, getPromptById as getCoverLetterPromptById } from '../utils/promptStorage'
+import ResumePromptManager from './ResumePromptManager'
+import PromptManager from './PromptManager'
 
-function ResumeUpload({ onUpload, existingResume = '' }) {
+function ResumeUpload({
+  onUpload,
+  existingResume = '',
+  selectedResumePromptId = 'default',
+  onResumePromptChange,
+  selectedCoverLetterPromptId = 'default',
+  onCoverLetterPromptChange,
+}) {
   const [file, setFile] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [text, setText] = useState(existingResume)
+  const [showResumePromptManager, setShowResumePromptManager] = useState(false)
+  const [showCoverLetterPromptManager, setShowCoverLetterPromptManager] = useState(false)
+  const resumePrompts = getResumePrompts()
+  const coverLetterPrompts = getCoverLetterPrompts()
+  const selectedResumePrompt = getResumePromptById(selectedResumePromptId) || resumePrompts[0]
+  const selectedCoverLetterPrompt = getCoverLetterPromptById(selectedCoverLetterPromptId) || coverLetterPrompts[0]
 
   // 当 existingResume 变化时，更新本地 text 状态
   useEffect(() => {
@@ -92,6 +109,59 @@ function ResumeUpload({ onUpload, existingResume = '' }) {
         <p className="text-gray-600 mb-6">
           支持上传 PDF 或 Word 文档，或直接粘贴简历文本
         </p>
+
+        {/* 首页选择：简历优化 + 推荐信 提示词 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700">简历优化提示词</label>
+              <button
+                type="button"
+                onClick={() => setShowResumePromptManager(true)}
+                className="px-3 py-1 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+              >
+                管理
+              </button>
+            </div>
+            <select
+              value={selectedResumePromptId}
+              onChange={(e) => onResumePromptChange(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+            >
+              {resumePrompts.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+            {selectedResumePrompt && (
+              <p className="mt-2 text-xs text-gray-500 line-clamp-2">{selectedResumePrompt.prompt.substring(0, 80)}…</p>
+            )}
+          </div>
+          <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700">推荐信提示词</label>
+              <button
+                type="button"
+                onClick={() => setShowCoverLetterPromptManager(true)}
+                className="px-3 py-1 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+              >
+                管理
+              </button>
+            </div>
+            <select
+              value={selectedCoverLetterPromptId}
+              onChange={(e) => onCoverLetterPromptChange(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+            >
+              {coverLetterPrompts.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+            {selectedCoverLetterPrompt && (
+              <p className="mt-2 text-xs text-gray-500 line-clamp-2">{selectedCoverLetterPrompt.prompt.substring(0, 80)}…</p>
+            )}
+          </div>
+        </div>
+
         {existingResume && (
           <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
             <p className="text-sm text-green-800">
@@ -167,6 +237,27 @@ function ResumeUpload({ onUpload, existingResume = '' }) {
           确认使用
         </button>
       </div>
+
+      {showResumePromptManager && (
+        <ResumePromptManager
+          selectedPromptId={selectedResumePromptId}
+          onSelectPrompt={(id) => {
+            onResumePromptChange(id)
+            setShowResumePromptManager(false)
+          }}
+          onClose={() => setShowResumePromptManager(false)}
+        />
+      )}
+      {showCoverLetterPromptManager && (
+        <PromptManager
+          selectedPromptId={selectedCoverLetterPromptId}
+          onSelectPrompt={(id) => {
+            onCoverLetterPromptChange(id)
+            setShowCoverLetterPromptManager(false)
+          }}
+          onClose={() => setShowCoverLetterPromptManager(false)}
+        />
+      )}
     </div>
   )
 }

@@ -5,6 +5,7 @@ import ResumePromptManager from './ResumePromptManager'
 function JobDescription({
   jobDescription,
   setJobDescription,
+  onFullFlow,
   onOptimize,
   hasResume,
   resumeText,
@@ -83,13 +84,22 @@ function JobDescription({
         />
       </div>
 
-      <button
-        onClick={onOptimize}
-        disabled={!hasResume || !jobDescription.trim()}
-        className="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-lg shadow-lg"
-      >
-        优化简历
-      </button>
+      <div className="flex flex-col gap-3">
+        <button
+          onClick={onFullFlow}
+          disabled={!hasResume || !jobDescription.trim()}
+          className="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-lg shadow-lg"
+        >
+          一键生成（优化简历 + 推荐信）
+        </button>
+        <button
+          onClick={onOptimize}
+          disabled={!hasResume || !jobDescription.trim()}
+          className="w-full px-6 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 text-sm"
+        >
+          仅优化简历
+        </button>
+      </div>
 
       {showPromptManager && (
         <ResumePromptManager

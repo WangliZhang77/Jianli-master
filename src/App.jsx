@@ -20,21 +20,81 @@ function App() {
   const [selectedCoverLetterPromptId, setSelectedCoverLetterPromptId] = useState('default')
   const [selectedResumePromptId, setSelectedResumePromptId] = useState('default')
 
-  // 从 localStorage 加载上次选择的提示词
+  // 从 localStorage 加载上次选择的提示词和最近一次简历内容
   useEffect(() => {
     const savedCoverLetter = localStorage.getItem('selectedCoverLetterPromptId')
     if (savedCoverLetter) {
       setSelectedCoverLetterPromptId(savedCoverLetter)
     }
-    const savedResume = localStorage.getItem('selectedResumePromptId')
-    if (savedResume) {
-      setSelectedResumePromptId(savedResume)
+    const savedResumePrompt = localStorage.getItem('selectedResumePromptId')
+    if (savedResumePrompt) {
+      setSelectedResumePromptId(savedResumePrompt)
+    }
+    const savedResumeText = localStorage.getItem('resumeText')
+    if (savedResumeText) {
+      setResumeText(savedResumeText)
     }
   }, [])
 
   const handleResumeUpload = (text) => {
     setResumeText(text)
+    localStorage.setItem('resumeText', text)
     setActiveTab('job')
+  }
+
+  // 一键流程：岗位描述和简历只发一次，一次得到 职位信息 + 优化简历 + 推荐信
+  const handleFullFlow = async () => {
+    if (!resumeText || !jobDescription) {
+      alert('请先上传简历和输入岗位描述')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const { getPromptById: getResumePromptById } = await import('./utils/resumePromptStorage')
+      const resumeTemplate = getResumePromptById(selectedResumePromptId)
+      const coverLetterTemplate = getPromptById(selectedCoverLetterPromptId)
+
+      const { industry, position: posForPlaceholder } = extractIndustryAndPosition(jobDescription)
+      let resumeInstruction = resumeTemplate?.prompt || ''
+      resumeInstruction = resumeInstruction
+        .replace(/{jobDescription}/g, jobDescription)
+        .replace(/{resume}/g, resumeText)
+        .replace(/{targetIndustry}/g, industry || '互联网')
+        .replace(/{targetPosition}/g, posForPlaceholder || '工程师')
+
+      let coverLetterInstruction = coverLetterTemplate?.prompt || ''
+      coverLetterInstruction = coverLetterInstruction
+        .replace(/{jobDescription}/g, jobDescription)
+        .replace(/{resume}/g, resumeText)
+
+      const response = await fetch('/api/full-flow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resume: resumeText,
+          jobDescription,
+          resumeInstruction,
+          resumeSystemPrompt: resumeTemplate?.systemPrompt,
+          coverLetterInstruction,
+          coverLetterSystemPrompt: coverLetterTemplate?.systemPrompt,
+        }),
+      })
+
+      const data = await response.json()
+      if (data.error) throw new Error(data.error)
+
+      setCompanyName(data.companyName || '')
+      setPosition(data.position || '')
+      setOptimizedResume(data.optimizedResume || '')
+      setCoverLetter(data.coverLetter || '')
+      // 一键流程完成后先查看优化简历，再到推荐信
+      setActiveTab('resume')
+    } catch (error) {
+      alert('一键生成失败: ' + error.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleOptimizeResume = async () => {
@@ -45,14 +105,9 @@ function App() {
 
     setLoading(true)
     try {
-      // 获取选中的简历优化提示词模板
       const { getPromptById } = await import('./utils/resumePromptStorage')
       const promptTemplate = getPromptById(selectedResumePromptId)
-
-      // 从JD中提取行业和岗位信息（用于占位符替换）
       const { industry, position } = extractIndustryAndPosition(jobDescription)
-      
-      // 处理提示词，替换所有占位符
       let processedPrompt = promptTemplate?.prompt || ''
       processedPrompt = processedPrompt
         .replace(/{jobDescription}/g, jobDescription)
@@ -62,22 +117,17 @@ function App() {
 
       const response = await fetch('/api/optimize-resume', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           resume: resumeText,
-          jobDescription: jobDescription,
+          jobDescription,
           prompt: processedPrompt,
           systemPrompt: promptTemplate?.systemPrompt,
         }),
       })
 
       const data = await response.json()
-      if (data.error) {
-        throw new Error(data.error)
-      }
-
+      if (data.error) throw new Error(data.error)
       setOptimizedResume(data.optimizedResume)
       setActiveTab('resume')
     } catch (error) {
@@ -95,32 +145,24 @@ function App() {
 
     setLoading(true)
     try {
-      // 从岗位描述中提取公司名称和职位
       const parsed = parseJobDescription(jobDescription)
       setCompanyName(parsed.companyName)
       setPosition(parsed.position)
 
-      // 获取选中的推荐信提示词模板
       const promptTemplate = getPromptById(selectedCoverLetterPromptId)
-      
       const response = await fetch('/api/generate-cover-letter', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           resume: optimizedResume,
-          jobDescription: jobDescription,
+          jobDescription,
           prompt: promptTemplate?.prompt,
           systemPrompt: promptTemplate?.systemPrompt,
         }),
       })
 
       const data = await response.json()
-      if (data.error) {
-        throw new Error(data.error)
-      }
-
+      if (data.error) throw new Error(data.error)
       setCoverLetter(data.coverLetter)
       setActiveTab('coverLetter')
     } catch (error) {
@@ -140,15 +182,15 @@ function App() {
     localStorage.setItem('selectedResumePromptId', promptId)
   }
 
-  // 清空当前流程，重新开始（但保留投递记录）
+  // 清空当前流程，重新开始（但保留投递记录和简历内容）
   const handleNextApplication = () => {
-    setResumeText('')
+    // 保留上一份简历内容，方便多岗位复用
     setJobDescription('')
     setOptimizedResume('')
     setCoverLetter('')
     setCompanyName('')
     setPosition('')
-    setActiveTab('upload')
+    setActiveTab('job')
     // 注意：不清理投递记录，投递记录保存在 localStorage 中，会保留
   }
 
@@ -242,9 +284,13 @@ function App() {
             )}
 
             {activeTab === 'upload' && (
-              <ResumeUpload 
-                onUpload={handleResumeUpload} 
+              <ResumeUpload
+                onUpload={handleResumeUpload}
                 existingResume={resumeText}
+                selectedResumePromptId={selectedResumePromptId}
+                onResumePromptChange={handleResumePromptChange}
+                selectedCoverLetterPromptId={selectedCoverLetterPromptId}
+                onCoverLetterPromptChange={handleCoverLetterPromptChange}
               />
             )}
 
@@ -252,6 +298,7 @@ function App() {
               <JobDescription
                 jobDescription={jobDescription}
                 setJobDescription={setJobDescription}
+                onFullFlow={handleFullFlow}
                 onOptimize={handleOptimizeResume}
                 hasResume={!!resumeText}
                 resumeText={resumeText}

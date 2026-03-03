@@ -48,6 +48,7 @@ import { optimizeResume } from './services/resumeService.js'
 import { generateCoverLetter } from './services/coverLetterService.js'
 import { parseResumeFile } from './utils/fileParser.js'
 import { extractJobInfo } from './services/jobInfoExtractor.js'
+import { runFullFlow } from './services/fullFlowService.js'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -246,6 +247,51 @@ app.post('/api/extract-job-info', async (req, res) => {
     res.status(500).json({ error: error.message })
   }
 })
+
+// 一键流程：岗位描述和简历只发一次，返回 职位信息 + 优化简历 + 推荐信
+app.post('/api/full-flow', async (req, res) => {
+  try {
+    const {
+      resume,
+      jobDescription,
+      resumeInstruction,
+      resumeSystemPrompt,
+      coverLetterInstruction,
+      coverLetterSystemPrompt,
+    } = req.body
+
+    if (!resume || !jobDescription) {
+      return res.status(400).json({ error: '请提供简历和岗位描述' })
+    }
+
+    const result = await runFullFlow({
+      jobDescription,
+      resume,
+      resumeInstruction: resumeInstruction || undefined,
+      resumeSystemPrompt: resumeSystemPrompt || undefined,
+      coverLetterInstruction: coverLetterInstruction || undefined,
+      coverLetterSystemPrompt: coverLetterSystemPrompt || undefined,
+    })
+    res.json(result)
+  } catch (error) {
+    console.error('Full flow error:', error)
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// 生产环境：托管前端静态文件（npm run build 生成的 dist）
+const isProduction = process.env.NODE_ENV === 'production'
+if (isProduction) {
+  const distPath = join(__dirname, '..', 'dist')
+  if (fs.existsSync(distPath)) {
+    app.use(express.static(distPath))
+    // SPA 前端路由：非 /api 的 GET 请求返回 index.html
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api')) return next()
+      res.sendFile(join(distPath, 'index.html'), (err) => { if (err) next(err) })
+    })
+  }
+}
 
 // 错误处理中间件
 app.use((err, req, res, next) => {

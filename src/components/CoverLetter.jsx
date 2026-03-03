@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import ApplicationRecord from './ApplicationRecord'
 import { exportCoverLetterToDocxFormatted } from '../utils/docxExporter'
 
@@ -12,19 +12,6 @@ function CoverLetter({
 }) {
   const [showRecordDialog, setShowRecordDialog] = useState(false)
   const [exporting, setExporting] = useState(false)
-  const [hasShownRecordDialog, setHasShownRecordDialog] = useState(false)
-
-  // 当推荐信生成后，自动弹出记录窗口
-  useEffect(() => {
-    if (coverLetter && !hasShownRecordDialog) {
-      // 延迟一点时间，让用户先看到推荐信
-      const timer = setTimeout(() => {
-        setShowRecordDialog(true)
-        setHasShownRecordDialog(true)
-      }, 1000)
-      return () => clearTimeout(timer)
-    }
-  }, [coverLetter, hasShownRecordDialog])
 
   const handleCopy = () => {
     navigator.clipboard.writeText(coverLetter)
@@ -62,18 +49,11 @@ function CoverLetter({
 
   const handleRecorded = () => {
     setShowRecordDialog(false)
-    // 不再自动询问是否投递下一份，用户可以通过"投递下一份"按钮手动操作
   }
 
   const handleNextApplication = () => {
     if (onNextApplication) {
-      const shouldContinue = confirm(
-        '确定要投递下一份简历吗？\n\n点击"确定"将清空当前流程，重新开始。\n点击"取消"保留当前内容。'
-      )
-      
-      if (shouldContinue) {
-        onNextApplication()
-      }
+      onNextApplication()
     }
   }
 
