@@ -33,6 +33,7 @@ function App() {
   const [openaiApiKey, setOpenaiApiKey] = useState('')
   const [showApiKeyModal, setShowApiKeyModal] = useState(false)
   const [apiKeyInput, setApiKeyInput] = useState('')
+  const [performanceMode, setPerformanceMode] = useState(true)
 
   useEffect(() => {
     const savedCoverLetter = localStorage.getItem('selectedCoverLetterPromptId')
@@ -41,6 +42,10 @@ function App() {
     if (savedResumePrompt) setSelectedResumePromptId(savedResumePrompt)
     const savedResumeText = localStorage.getItem('resumeText')
     if (savedResumeText) setResumeText(savedResumeText)
+    try {
+      const savedPerf = localStorage.getItem('performanceMode')
+      if (savedPerf !== null) setPerformanceMode(savedPerf === 'true')
+    } catch (_e) {}
     setOpenaiApiKey(getApiKey())
   }, [])
 
@@ -231,7 +236,7 @@ function App() {
 
   return (
     <div className="min-h-screen relative">
-      <AnimatedBackground />
+      <AnimatedBackground performanceMode={performanceMode} />
       <div className="relative z-10 min-h-screen py-8 px-4">
         <div className="max-w-6xl mx-auto space-y-4">
           <GlassCard>
@@ -246,6 +251,18 @@ function App() {
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-slate-300 text-sm mr-2">{user?.email}</span>
+                  <AppleButton
+                    variant="secondary"
+                    onClick={() => {
+                      const next = !performanceMode
+                      setPerformanceMode(next)
+                      try {
+                        localStorage.setItem('performanceMode', String(next))
+                      } catch (_e) {}
+                    }}
+                  >
+                    {performanceMode ? '性能模式：开' : '性能模式：关'}
+                  </AppleButton>
                   <AppleButton variant="secondary" onClick={logout}>{t('logout')}</AppleButton>
                   <AppleButton variant="secondary" onClick={() => setLocale(locale === 'zh' ? 'en' : 'zh')}>
                     {locale === 'zh' ? t('switchEn') : t('switchZh')}

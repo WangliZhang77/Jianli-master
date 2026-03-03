@@ -1,7 +1,14 @@
 import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 
-function AnimatedBackground() {
+function AnimatedBackground({ performanceMode = true }) {
+  // 性能模式：只保留一层静态渐变背景，完全关闭动画和鼠标跟随
+  if (performanceMode) {
+    return (
+      <div className="fixed inset-0 -z-10 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950" />
+    )
+  }
+
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
 
   useEffect(() => {
