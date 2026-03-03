@@ -20,23 +20,17 @@ if (result.error) {
   console.log('✅ 环境变量文件加载成功')
 }
 
-// 验证必要的环境变量
+// API Key 可从环境变量或前端请求中提供，启动时不强制
 if (!process.env.OPENAI_API_KEY) {
-  console.error('='.repeat(50))
-  console.error('❌ 错误: OPENAI_API_KEY 环境变量未设置')
-  console.error('='.repeat(50))
-  console.error('请在项目根目录创建 .env 文件，并添加以下内容:')
-  console.error('')
-  console.error('OPENAI_API_KEY=your_openai_api_key_here')
-  console.error('PORT=3001')
-  console.error('')
-  console.error('当前环境变量值:')
-  console.error('OPENAI_API_KEY:', process.env.OPENAI_API_KEY || '(未设置)')
-  console.error('='.repeat(50))
-  process.exit(1)
+  console.log('💡 未配置 OPENAI_API_KEY：可在前端「设置 API Key」中输入，或配置 .env / 云端环境变量')
+} else {
+  console.log('✅ 服务端已配置 OpenAI API 密钥（也可在前端覆盖）')
 }
 
-console.log('✅ OpenAI API 密钥已配置')
+/** 从请求中获取 API Key：body.apiKey > header X-OpenAI-API-Key > 环境变量 */
+function getApiKeyFromRequest(req) {
+  return (req.body && req.body.apiKey) || req.get('X-OpenAI-API-Key') || process.env.OPENAI_API_KEY
+}
 
 // 确保环境变量已加载后再导入其他模块
 import express from 'express'
@@ -202,13 +196,17 @@ app.post('/api/upload-resume', (req, res, next) => {
 
 app.post('/api/optimize-resume', async (req, res) => {
   try {
+    const apiKey = getApiKeyFromRequest(req)
+    if (!apiKey) {
+      return res.status(400).json({ error: '请在前端「设置 API Key」中输入 OpenAI API 密钥' })
+    }
     const { resume, jobDescription, prompt, systemPrompt } = req.body
 
     if (!resume || !jobDescription) {
       return res.status(400).json({ error: '请提供简历和岗位描述' })
     }
 
-    const optimizedResume = await optimizeResume(resume, jobDescription, prompt, systemPrompt)
+    const optimizedResume = await optimizeResume(resume, jobDescription, prompt, systemPrompt, apiKey)
     res.json({ optimizedResume })
   } catch (error) {
     console.error('Optimize error:', error)
@@ -218,13 +216,17 @@ app.post('/api/optimize-resume', async (req, res) => {
 
 app.post('/api/generate-cover-letter', async (req, res) => {
   try {
+    const apiKey = getApiKeyFromRequest(req)
+    if (!apiKey) {
+      return res.status(400).json({ error: '请在前端「设置 API Key」中输入 OpenAI API 密钥' })
+    }
     const { resume, jobDescription, prompt, systemPrompt } = req.body
 
     if (!resume || !jobDescription) {
       return res.status(400).json({ error: '请提供简历和岗位描述' })
     }
 
-    const coverLetter = await generateCoverLetter(resume, jobDescription, prompt, systemPrompt)
+    const coverLetter = await generateCoverLetter(resume, jobDescription, prompt, systemPrompt, apiKey)
     res.json({ coverLetter })
   } catch (error) {
     console.error('Cover letter error:', error)
@@ -234,13 +236,17 @@ app.post('/api/generate-cover-letter', async (req, res) => {
 
 app.post('/api/extract-job-info', async (req, res) => {
   try {
+    const apiKey = getApiKeyFromRequest(req)
+    if (!apiKey) {
+      return res.status(400).json({ error: '请在前端「设置 API Key」中输入 OpenAI API 密钥' })
+    }
     const { jobDescription } = req.body
 
     if (!jobDescription) {
       return res.status(400).json({ error: '请提供岗位描述' })
     }
 
-    const jobInfo = await extractJobInfo(jobDescription)
+    const jobInfo = await extractJobInfo(jobDescription, apiKey)
     res.json(jobInfo)
   } catch (error) {
     console.error('Extract job info error:', error)
@@ -251,6 +257,10 @@ app.post('/api/extract-job-info', async (req, res) => {
 // 一键流程：岗位描述和简历只发一次，返回 职位信息 + 优化简历 + 推荐信
 app.post('/api/full-flow', async (req, res) => {
   try {
+    const apiKey = getApiKeyFromRequest(req)
+    if (!apiKey) {
+      return res.status(400).json({ error: '请在前端「设置 API Key」中输入 OpenAI API 密钥' })
+    }
     const {
       resume,
       jobDescription,
@@ -271,6 +281,7 @@ app.post('/api/full-flow', async (req, res) => {
       resumeSystemPrompt: resumeSystemPrompt || undefined,
       coverLetterInstruction: coverLetterInstruction || undefined,
       coverLetterSystemPrompt: coverLetterSystemPrompt || undefined,
+      apiKey,
     })
     res.json(result)
   } catch (error) {
@@ -308,7 +319,7 @@ app.listen(PORT, () => {
   console.log(`✅ 服务器启动成功！`)
   console.log(`📡 服务器运行在 http://localhost:${PORT}`)
   console.log(`🏥 健康检查: http://localhost:${PORT}/api/health`)
-  console.log(`🔑 OpenAI API 密钥: ${process.env.OPENAI_API_KEY ? '已配置' : '未配置'}`)
+  console.log(`🔑 OpenAI API 密钥: ${process.env.OPENAI_API_KEY ? '服务端已配置' : '由前端提供'}`)
   console.log('='.repeat(50))
 }).on('error', (err) => {
   if (err.code === 'EADDRINUSE') {

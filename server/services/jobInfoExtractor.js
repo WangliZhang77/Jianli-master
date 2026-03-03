@@ -1,16 +1,16 @@
 import OpenAI from 'openai'
 import { getLightModel, truncateJobDescription } from '../utils/tokenHelper.js'
 
-function getOpenAIClient() {
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) {
-    throw new Error('OpenAI API 密钥未配置，请在 .env 文件中设置 OPENAI_API_KEY')
+function getOpenAIClient(apiKey) {
+  const key = apiKey || process.env.OPENAI_API_KEY
+  if (!key) {
+    throw new Error('请在前端设置 OpenAI API Key 或配置服务端 OPENAI_API_KEY')
   }
-  return new OpenAI({ apiKey })
+  return new OpenAI({ apiKey: key })
 }
 
-export async function extractJobInfo(jobDescription) {
-  const openai = getOpenAIClient()
+export async function extractJobInfo(jobDescription, apiKey) {
+  const openai = getOpenAIClient(apiKey)
   const jd = truncateJobDescription(jobDescription)
   try {
     const prompt = `提取公司名、职位名。只返回 JSON：{"companyName":"","position":""}，无则 ""。

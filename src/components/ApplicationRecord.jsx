@@ -2,14 +2,15 @@ import { useState, useEffect } from 'react'
 import { saveApplication } from '../utils/applicationStorage'
 import { parseJobDescription } from '../utils/jobDescriptionParser'
 
-function ApplicationRecord({ 
-  companyName, 
-  position, 
-  jobDescription, 
-  resume, 
+function ApplicationRecord({
+  companyName,
+  position,
+  jobDescription,
+  resume,
   coverLetter,
   onRecorded,
-  onCancel 
+  onCancel,
+  openaiApiKey = '',
 }) {
   const [formData, setFormData] = useState({
     companyName: companyName || '',
@@ -29,10 +30,8 @@ function ApplicationRecord({
           // 首先尝试使用AI识别
           const response = await fetch('/api/extract-job-info', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ jobDescription }),
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ jobDescription, apiKey: openaiApiKey.trim() }),
           })
 
           if (response.ok) {

@@ -1,16 +1,16 @@
 import OpenAI from 'openai'
 import { getMainModel, truncateJobDescription, truncateResumeForCoverLetter } from '../utils/tokenHelper.js'
 
-function getOpenAIClient() {
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) {
-    throw new Error('OpenAI API 密钥未配置，请在 .env 文件中设置 OPENAI_API_KEY')
+function getOpenAIClient(apiKey) {
+  const key = apiKey || process.env.OPENAI_API_KEY
+  if (!key) {
+    throw new Error('请在前端设置 OpenAI API Key 或配置服务端 OPENAI_API_KEY')
   }
-  return new OpenAI({ apiKey })
+  return new OpenAI({ apiKey: key })
 }
 
-export async function generateCoverLetter(resume, jobDescription, customPrompt, systemPrompt) {
-  const openai = getOpenAIClient()
+export async function generateCoverLetter(resume, jobDescription, customPrompt, systemPrompt, apiKey) {
+  const openai = getOpenAIClient(apiKey)
   const jd = truncateJobDescription(jobDescription)
   const resumeText = truncateResumeForCoverLetter(resume)
   try {
@@ -46,7 +46,7 @@ ${resumeText}`
     return completion.choices[0].message.content.trim()
   } catch (error) {
     if (error.message.includes('API key')) {
-      throw new Error('OpenAI API 密钥未配置或无效，请在 .env 文件中设置 OPENAI_API_KEY')
+      throw new Error('OpenAI API 密钥未配置或无效，请在前端重新设置 API Key')
     }
     throw new Error('生成推荐信失败: ' + error.message)
   }

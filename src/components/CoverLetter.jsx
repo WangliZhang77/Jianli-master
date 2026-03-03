@@ -1,21 +1,24 @@
 import { useState } from 'react'
 import ApplicationRecord from './ApplicationRecord'
 import { exportCoverLetterToDocxFormatted } from '../utils/docxExporter'
+import { useI18n } from '../contexts/I18nContext'
 
-function CoverLetter({ 
-  coverLetter, 
-  companyName, 
-  position, 
-  jobDescription, 
+function CoverLetter({
+  coverLetter,
+  companyName,
+  position,
+  jobDescription,
   resume,
-  onNextApplication
+  onNextApplication,
+  openaiApiKey = '',
 }) {
+  const { t, locale } = useI18n()
   const [showRecordDialog, setShowRecordDialog] = useState(false)
   const [exporting, setExporting] = useState(false)
 
   const handleCopy = () => {
     navigator.clipboard.writeText(coverLetter)
-    alert('已复制到剪贴板')
+    alert(t('copied'))
   }
 
   const handleDownload = () => {
@@ -23,7 +26,7 @@ function CoverLetter({
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = '推荐信.txt'
+    a.download = locale === 'en' ? 'cover-letter.txt' : '推荐信.txt'
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -32,7 +35,7 @@ function CoverLetter({
 
   const handleExportDocx = async () => {
     if (!coverLetter) {
-      alert('没有推荐信内容可导出')
+      alert(t('noContentToExport'))
       return
     }
 
@@ -60,38 +63,38 @@ function CoverLetter({
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">推荐信</h2>
+        <h2 className="text-2xl font-bold text-gray-800">{t('coverLetter')}</h2>
         <div className="space-x-3">
           <button
             onClick={handleCopy}
             className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
           >
-            复制
+            {t('copy')}
           </button>
           <button
             onClick={handleDownload}
             className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
           >
-            下载 TXT
+            {t('downloadTxt')}
           </button>
           <button
             onClick={handleExportDocx}
             disabled={exporting}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {exporting ? '导出中...' : '📄 导出 DOCX'}
+            {exporting ? t('exporting') : `📄 ${t('exportDocx')}`}
           </button>
           <button
             onClick={() => setShowRecordDialog(true)}
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
           >
-            记录投递
+            {t('recordDelivery')}
           </button>
           <button
             onClick={handleNextApplication}
             className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
           >
-            🚀 投递下一份
+            🚀 {t('nextApplication')}
           </button>
         </div>
       </div>
@@ -105,12 +108,13 @@ function CoverLetter({
           coverLetter={coverLetter}
           onRecorded={handleRecorded}
           onCancel={() => setShowRecordDialog(false)}
+          openaiApiKey={openaiApiKey}
         />
       )}
 
       <div className="border border-gray-300 rounded-lg overflow-hidden">
         <div className="bg-gradient-to-r from-purple-100 to-indigo-100 px-4 py-2 border-b border-gray-300">
-          <h3 className="font-medium text-gray-700">生成的推荐信内容</h3>
+          <h3 className="font-medium text-gray-700">{t('coverLetterContent')}</h3>
         </div>
         <div className="p-6 bg-white min-h-96">
           <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans leading-relaxed">

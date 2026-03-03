@@ -11,19 +11,22 @@ export async function runFullFlow({
   resumeSystemPrompt,
   coverLetterInstruction,
   coverLetterSystemPrompt,
+  apiKey,
 }) {
   const { companyName, position, optimizedResume } = await extractAndOptimizeResume(
     resume,
     jobDescription,
     resumeInstruction,
-    resumeSystemPrompt
+    resumeSystemPrompt,
+    apiKey
   )
 
   const coverLetter = await generateCoverLetter(
     optimizedResume,
     jobDescription,
     coverLetterInstruction,
-    coverLetterSystemPrompt
+    coverLetterSystemPrompt,
+    apiKey
   )
 
   return {

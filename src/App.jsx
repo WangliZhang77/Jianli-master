@@ -7,8 +7,11 @@ import ApplicationHistory from './components/ApplicationHistory'
 import { getPromptById } from './utils/promptStorage'
 import { parseJobDescription } from './utils/jobDescriptionParser'
 import { extractIndustryAndPosition } from './utils/jobInfoExtractor'
+import { getApiKey, setApiKey } from './utils/apiKeyStorage'
+import { useI18n } from './contexts/I18nContext'
 
 function App() {
+  const { locale, setLocale, t } = useI18n()
   const [resumeText, setResumeText] = useState('')
   const [jobDescription, setJobDescription] = useState('')
   const [optimizedResume, setOptimizedResume] = useState('')
@@ -19,21 +22,19 @@ function App() {
   const [activeTab, setActiveTab] = useState('upload')
   const [selectedCoverLetterPromptId, setSelectedCoverLetterPromptId] = useState('default')
   const [selectedResumePromptId, setSelectedResumePromptId] = useState('default')
+  const [openaiApiKey, setOpenaiApiKey] = useState('')
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false)
+  const [apiKeyInput, setApiKeyInput] = useState('')
 
-  // 从 localStorage 加载上次选择的提示词和最近一次简历内容
+  // 从 localStorage 加载
   useEffect(() => {
     const savedCoverLetter = localStorage.getItem('selectedCoverLetterPromptId')
-    if (savedCoverLetter) {
-      setSelectedCoverLetterPromptId(savedCoverLetter)
-    }
+    if (savedCoverLetter) setSelectedCoverLetterPromptId(savedCoverLetter)
     const savedResumePrompt = localStorage.getItem('selectedResumePromptId')
-    if (savedResumePrompt) {
-      setSelectedResumePromptId(savedResumePrompt)
-    }
+    if (savedResumePrompt) setSelectedResumePromptId(savedResumePrompt)
     const savedResumeText = localStorage.getItem('resumeText')
-    if (savedResumeText) {
-      setResumeText(savedResumeText)
-    }
+    if (savedResumeText) setResumeText(savedResumeText)
+    setOpenaiApiKey(getApiKey())
   }, [])
 
   const handleResumeUpload = (text) => {
@@ -44,6 +45,10 @@ function App() {
 
   // 一键流程：岗位描述和简历只发一次，一次得到 职位信息 + 优化简历 + 推荐信
   const handleFullFlow = async () => {
+    if (!openaiApiKey.trim()) {
+      alert('请先在右上角「设置 API Key」中输入 OpenAI API 密钥')
+      return
+    }
     if (!resumeText || !jobDescription) {
       alert('请先上传简历和输入岗位描述')
       return
@@ -72,6 +77,7 @@ function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          apiKey: openaiApiKey.trim(),
           resume: resumeText,
           jobDescription,
           resumeInstruction,
@@ -98,6 +104,10 @@ function App() {
   }
 
   const handleOptimizeResume = async () => {
+    if (!openaiApiKey.trim()) {
+      alert('请先在右上角「设置 API Key」中输入 OpenAI API 密钥')
+      return
+    }
     if (!resumeText || !jobDescription) {
       alert('请先上传简历和输入岗位描述')
       return
@@ -119,6 +129,7 @@ function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          apiKey: openaiApiKey.trim(),
           resume: resumeText,
           jobDescription,
           prompt: processedPrompt,
@@ -138,6 +149,10 @@ function App() {
   }
 
   const handleGenerateCoverLetter = async () => {
+    if (!openaiApiKey.trim()) {
+      alert('请先在右上角「设置 API Key」中输入 OpenAI API 密钥')
+      return
+    }
     if (!optimizedResume || !jobDescription) {
       alert('请先优化简历')
       return
@@ -154,6 +169,7 @@ function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          apiKey: openaiApiKey.trim(),
           resume: optimizedResume,
           jobDescription,
           prompt: promptTemplate?.prompt,
@@ -200,19 +216,74 @@ function App() {
         <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
           {/* Header */}
           <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-6">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center flex-wrap gap-2">
               <div>
-                <h1 className="text-3xl font-bold mb-2">简历大师</h1>
-                <p className="text-purple-100">智能简历优化与推荐信生成工具</p>
+                <h1 className="text-3xl font-bold mb-2">{t('appTitle')}</h1>
+                <p className="text-purple-100">{t('appSubtitle')}</p>
               </div>
-              <button
-                onClick={() => setActiveTab('history')}
-                className="px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg text-white font-medium transition-all"
-              >
-                📋 查看投递记录
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setLocale(locale === 'zh' ? 'en' : 'zh')}
+                  className="px-3 py-1.5 rounded-lg bg-white bg-opacity-20 hover:bg-opacity-30 text-sm font-medium"
+                >
+                  {locale === 'zh' ? 'EN' : '中文'}
+                </button>
+                <button
+                  onClick={() => {
+                    setApiKeyInput(openaiApiKey)
+                    setShowApiKeyModal(true)
+                  }}
+                  className={`px-4 py-2 rounded-lg font-medium transition-all ${openaiApiKey.trim() ? 'bg-green-500 bg-opacity-90 hover:bg-opacity-100' : 'bg-amber-500 bg-opacity-90 hover:bg-opacity-100'}`}
+                >
+                  {openaiApiKey.trim() ? `🔑 ${t('apiKeySet')}` : `🔑 ${t('setApiKey')}`}
+                </button>
+                <button
+                  onClick={() => setActiveTab('history')}
+                  className="px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg text-white font-medium transition-all"
+                >
+                  📋 {t('viewHistory')}
+                </button>
+              </div>
             </div>
           </div>
+
+          {/* 设置 API Key 弹窗 */}
+          {showApiKeyModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+                <h3 className="text-lg font-bold text-gray-800 mb-2">{t('apiKeyModalTitle')}</h3>
+                <p className="text-sm text-gray-600 mb-4">{t('apiKeyModalHint')}</p>
+                <input
+                  type="password"
+                  placeholder="sk-..."
+                  value={apiKeyInput}
+                  onChange={(e) => setApiKeyInput(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 mb-4"
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => setShowApiKeyModal(false)}
+                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                  >
+                    {t('cancel')}
+                  </button>
+                  <button
+                    onClick={() => {
+                      const v = apiKeyInput.trim()
+                      setApiKey(v)
+                      setOpenaiApiKey(v)
+                      setShowApiKeyModal(false)
+                      if (v) alert(t('apiKeySaved'))
+                    }}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                  >
+                    {t('save')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Tabs */}
           <div className="border-b border-gray-200">
@@ -225,7 +296,7 @@ function App() {
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                上传简历
+                {t('tabUpload')}
               </button>
               <button
                 onClick={() => setActiveTab('job')}
@@ -235,7 +306,7 @@ function App() {
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                岗位描述
+                {t('tabJob')}
               </button>
               <button
                 onClick={() => setActiveTab('resume')}
@@ -246,7 +317,7 @@ function App() {
                 }`}
                 disabled={!optimizedResume}
               >
-                优化简历
+                {t('tabResume')}
               </button>
               <button
                 onClick={() => setActiveTab('coverLetter')}
@@ -257,7 +328,7 @@ function App() {
                 }`}
                 disabled={!coverLetter}
               >
-                推荐信
+                {t('tabCoverLetter')}
               </button>
               <button
                 onClick={() => setActiveTab('history')}
@@ -267,7 +338,7 @@ function App() {
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                📋 投递记录
+                📋 {t('tabHistory')}
               </button>
             </nav>
           </div>
@@ -278,7 +349,7 @@ function App() {
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                 <div className="bg-white rounded-lg p-6">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
-                  <p className="mt-4 text-gray-600">处理中，请稍候...</p>
+                  <p className="mt-4 text-gray-600">{t('loading')}</p>
                 </div>
               </div>
             )}
@@ -318,13 +389,14 @@ function App() {
             )}
 
             {activeTab === 'coverLetter' && (
-              <CoverLetter 
+              <CoverLetter
                 coverLetter={coverLetter}
                 companyName={companyName}
                 position={position}
                 jobDescription={jobDescription}
                 resume={optimizedResume}
                 onNextApplication={handleNextApplication}
+                openaiApiKey={openaiApiKey}
               />
             )}
 
