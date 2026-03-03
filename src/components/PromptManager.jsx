@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getPrompts, savePrompt, deletePrompt } from '../utils/promptStorage'
+import AppleButton from './AppleButton'
 import toast from 'react-hot-toast'
 import { useI18n } from '../contexts/I18nContext'
 
@@ -74,158 +75,83 @@ function PromptManager({ selectedPromptId, onSelectPrompt, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-4 flex justify-between items-center">
-          <h2 className="text-xl font-bold">{t('promptManageTitle')}</h2>
-          <button
-            onClick={onClose}
-            className="text-white hover:text-gray-200 text-2xl"
-          >
-            ×
-          </button>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-slate-950/90 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="p-4 border-b border-white/10 flex justify-between items-center">
+          <h2 className="text-xl font-bold text-white">{t('promptManageTitle')}</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-white text-2xl leading-none">×</button>
         </div>
-
-        {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
-          {/* Add/Edit Form */}
           {showAddForm && (
-            <div className="mb-6 p-4 border border-purple-200 rounded-lg bg-purple-50">
-              <h3 className="font-bold text-gray-800 mb-4">
-                {editingPrompt ? t('editTemplate') : t('newTemplate')}
-              </h3>
-              
+            <div className="mb-6 p-4 border border-white/10 rounded-xl bg-white/5">
+              <h3 className="font-bold text-white mb-4">{editingPrompt ? t('editTemplate') : t('newTemplate')}</h3>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {t('templateName')}
-                  </label>
+                  <label className="block text-sm font-medium text-slate-200 mb-1">{t('templateName')}</label>
                   <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder={t('techTemplateExample')}
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    className="w-full p-2 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-400 focus:ring-2 focus:ring-white/20"
                   />
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {t('systemPromptOptional')}
-                  </label>
+                  <label className="block text-sm font-medium text-slate-200 mb-1">{t('systemPromptOptional')}</label>
                   <input
                     type="text"
                     value={formData.systemPrompt}
                     onChange={(e) => setFormData({ ...formData, systemPrompt: e.target.value })}
                     placeholder={t('systemRolePlaceholder')}
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    className="w-full p-2 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-400 focus:ring-2 focus:ring-white/20"
                   />
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-slate-200 mb-1">
                     {t('promptContentLabel')}
-                    <span className="text-xs text-gray-500 ml-2">
-                      ({'{jobDescription}'}, {'{resume}'})
-                    </span>
+                    <span className="text-xs text-slate-400 ml-2">({'{jobDescription}'}, {'{resume}'})</span>
                   </label>
                   <textarea
                     value={formData.prompt}
                     onChange={(e) => setFormData({ ...formData, prompt: e.target.value })}
                     placeholder={t('promptContentPlaceholder')}
-                    rows="10"
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 resize-none"
+                    rows={10}
+                    className="w-full p-2 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-400 focus:ring-2 focus:ring-white/20 resize-none"
                   />
                 </div>
-
-                <div className="flex space-x-3">
-                  <button
-                    onClick={handleSave}
-                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-                  >
-                    {t('save')}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowAddForm(false)
-                      setEditingPrompt(null)
-                      setFormData({
-                        name: '',
-                        prompt: '',
-                        systemPrompt: '你是一位专业的求职信撰写专家，擅长根据简历和岗位要求撰写有说服力的推荐信。'
-                      })
-                    }}
-                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
-                  >
-                    {t('cancel')}
-                  </button>
+                <div className="flex gap-2">
+                  <AppleButton onClick={handleSave}>{t('save')}</AppleButton>
+                  <AppleButton variant="secondary" onClick={() => { setShowAddForm(false); setEditingPrompt(null); setFormData({ name: '', prompt: '', systemPrompt: '你是一位专业的求职信撰写专家，擅长根据简历和岗位要求撰写有说服力的推荐信。' }) }}>{t('cancel')}</AppleButton>
                 </div>
               </div>
             </div>
           )}
-
-          {/* Template List */}
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <h3 className="font-bold text-gray-800">{t('savedTemplates')}</h3>
+              <h3 className="font-bold text-white">{t('savedTemplates')}</h3>
               {!showAddForm && (
-                <button
-                  onClick={() => {
-                    setShowAddForm(true)
-                    setEditingPrompt(null)
-                  }}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm"
-                >
-                  {t('addNewTemplate')}
-                </button>
+                <AppleButton onClick={() => { setShowAddForm(true); setEditingPrompt(null) }} className="!py-2 text-sm">{t('addNewTemplate')}</AppleButton>
               )}
             </div>
-
             {prompts.map((prompt) => (
               <div
                 key={prompt.id}
-                className={`p-4 border rounded-lg ${
-                  selectedPromptId === prompt.id
-                    ? 'border-purple-500 bg-purple-50'
-                    : 'border-gray-200 bg-white'
-                }`}
+                className={`p-4 border rounded-xl ${selectedPromptId === prompt.id ? 'border-white/30 bg-white/10' : 'border-white/10 bg-white/5'}`}
               >
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <h4 className="font-medium text-gray-800">{prompt.name}</h4>
-                      {selectedPromptId === prompt.id && (
-                        <span className="px-2 py-1 bg-purple-600 text-white text-xs rounded">
-                          {t('currentUse')}
-                        </span>
-                      )}
+                    <div className="flex items-center gap-2 mb-2">
+                      <h4 className="font-medium text-white">{prompt.name}</h4>
+                      {selectedPromptId === prompt.id && <span className="px-2 py-1 bg-white/20 text-white text-xs rounded-lg">{t('currentUse')}</span>}
                     </div>
-                    <p className="text-sm text-gray-600 line-clamp-2">
-                      {prompt.prompt.substring(0, 100)}...
-                    </p>
+                    <p className="text-sm text-slate-400 line-clamp-2">{prompt.prompt.substring(0, 100)}...</p>
                   </div>
-                  <div className="flex space-x-2 ml-4">
-                    <button
-                      onClick={() => onSelectPrompt(prompt.id)}
-                      className="px-3 py-1 text-sm bg-purple-600 text-white rounded hover:bg-purple-700"
-                    >
-                      {t('useTemplate')}
-                    </button>
+                  <div className="flex gap-2 ml-4">
+                    <AppleButton onClick={() => onSelectPrompt(prompt.id)} className="!py-1.5 !px-3 text-sm">{t('useTemplate')}</AppleButton>
                     {prompt.id !== 'default' && (
                       <>
-                        <button
-                          onClick={() => handleEdit(prompt)}
-                          className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
-                        >
-                          {t('edit')}
-                        </button>
-                        <button
-                          onClick={() => handleDelete(prompt.id)}
-                          className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600"
-                        >
-                          {t('delete')}
-                        </button>
+                        <AppleButton variant="secondary" onClick={() => handleEdit(prompt)} className="!py-1.5 !px-3 text-sm">{t('edit')}</AppleButton>
+                        <AppleButton variant="secondary" onClick={() => handleDelete(prompt.id)} className="!py-1.5 !px-3 text-sm !bg-red-500/20 !text-red-200 !border-red-400/30">{t('delete')}</AppleButton>
                       </>
                     )}
                   </div>

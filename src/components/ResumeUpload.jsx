@@ -3,6 +3,7 @@ import { getPrompts as getResumePrompts, getPromptById as getResumePromptById } 
 import { getPrompts as getCoverLetterPrompts, getPromptById as getCoverLetterPromptById } from '../utils/promptStorage'
 import ResumePromptManager from './ResumePromptManager'
 import PromptManager from './PromptManager'
+import AppleButton from './AppleButton'
 import toast from 'react-hot-toast'
 import { useI18n } from '../contexts/I18nContext'
 
@@ -108,136 +109,89 @@ function ResumeUpload({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">{t('uploadTitle')}</h2>
-        <p className="text-gray-600 mb-6">
-          {t('uploadHint')}
-        </p>
+        <h2 className="text-2xl font-bold text-white mb-4">{t('uploadTitle')}</h2>
+        <p className="text-slate-300 mb-6">{t('uploadHint')}</p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="p-4 bg-white/5 border border-white/10 rounded-xl">
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-gray-700">{t('resumePromptLabel')}</label>
-              <button
-                type="button"
-                onClick={() => setShowResumePromptManager(true)}
-                className="px-3 py-1 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700"
-              >
+              <label className="block text-sm font-medium text-slate-200">{t('resumePromptLabel')}</label>
+              <AppleButton variant="secondary" onClick={() => setShowResumePromptManager(true)} className="!py-1.5 !px-3 text-sm">
                 {t('manage')}
-              </button>
+              </AppleButton>
             </div>
             <select
               value={selectedResumePromptId}
               onChange={(e) => onResumePromptChange(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+              className="w-full p-2 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-white/20"
             >
               {resumePrompts.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
+                <option key={p.id} value={p.id} className="bg-slate-800">{p.name}</option>
               ))}
             </select>
             {selectedResumePrompt && (
-              <p className="mt-2 text-xs text-gray-500 line-clamp-2">{selectedResumePrompt.prompt.substring(0, 80)}…</p>
+              <p className="mt-2 text-xs text-slate-400 line-clamp-2">{selectedResumePrompt.prompt.substring(0, 80)}…</p>
             )}
           </div>
-          <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+          <div className="p-4 bg-white/5 border border-white/10 rounded-xl">
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-gray-700">{t('coverLetterPromptLabel')}</label>
-              <button
-                type="button"
-                onClick={() => setShowCoverLetterPromptManager(true)}
-                className="px-3 py-1 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700"
-              >
+              <label className="block text-sm font-medium text-slate-200">{t('coverLetterPromptLabel')}</label>
+              <AppleButton variant="secondary" onClick={() => setShowCoverLetterPromptManager(true)} className="!py-1.5 !px-3 text-sm">
                 {t('manage')}
-              </button>
+              </AppleButton>
             </div>
             <select
               value={selectedCoverLetterPromptId}
               onChange={(e) => onCoverLetterPromptChange(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+              className="w-full p-2 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-white/20"
             >
               {coverLetterPrompts.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
+                <option key={p.id} value={p.id} className="bg-slate-800">{p.name}</option>
               ))}
             </select>
             {selectedCoverLetterPrompt && (
-              <p className="mt-2 text-xs text-gray-500 line-clamp-2">{selectedCoverLetterPrompt.prompt.substring(0, 80)}…</p>
+              <p className="mt-2 text-xs text-slate-400 line-clamp-2">{selectedCoverLetterPrompt.prompt.substring(0, 80)}…</p>
             )}
           </div>
         </div>
 
         {existingResume && (
-          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-            <p className="text-sm text-green-800">
-              {t('resumeUploadedHint')}
-            </p>
+          <div className="mb-4 p-3 bg-emerald-500/20 border border-emerald-400/30 rounded-xl">
+            <p className="text-sm text-emerald-200">{t('resumeUploadedHint')}</p>
           </div>
         )}
       </div>
 
-      {/* File Upload */}
-      <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-purple-500 transition-colors">
-        <input
-          type="file"
-          accept=".pdf,.doc,.docx"
-          onChange={handleFileChange}
-          className="hidden"
-          id="file-upload"
-        />
-        <label
-          htmlFor="file-upload"
-          className="cursor-pointer flex flex-col items-center"
-        >
-          <svg
-            className="w-12 h-12 text-gray-400 mb-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-            />
+      <div className="border-2 border-dashed border-white/20 rounded-xl p-8 text-center hover:border-white/40 transition-colors">
+        <input type="file" accept=".pdf,.doc,.docx" onChange={handleFileChange} className="hidden" id="file-upload" />
+        <label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center">
+          <svg className="w-12 h-12 text-slate-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
           </svg>
-          <span className="text-gray-600 font-medium">
-            {file ? file.name : t('clickSelectFile')}
-          </span>
+          <span className="text-slate-300 font-medium">{file ? file.name : t('clickSelectFile')}</span>
         </label>
         {file && (
-          <button
-            onClick={handleUpload}
-            disabled={uploading}
-            className="mt-4 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
-          >
+          <AppleButton onClick={handleUpload} disabled={uploading} className="mt-4">
             {uploading ? t('uploading') : t('uploadFile')}
-          </button>
+          </AppleButton>
         )}
       </div>
 
-      {/* Divider */}
       <div className="flex items-center">
-        <div className="flex-1 border-t border-gray-300"></div>
-        <span className="px-4 text-gray-500">{t('or')}</span>
-        <div className="flex-1 border-t border-gray-300"></div>
+        <div className="flex-1 border-t border-white/10" />
+        <span className="px-4 text-slate-400">{t('or')}</span>
+        <div className="flex-1 border-t border-white/10" />
       </div>
 
-      {/* Text Input */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          {t('pasteResumeLabel')}
-        </label>
+        <label className="block text-sm font-medium text-slate-200 mb-2">{t('pasteResumeLabel')}</label>
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder={t('pasteResumePlaceholder')}
-          className="w-full h-64 p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+          className="w-full h-64 p-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-400 focus:ring-2 focus:ring-white/20 resize-none"
         />
-        <button
-          onClick={handleTextSubmit}
-          className="mt-4 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-        >
-          {t('confirmUse')}
-        </button>
+        <AppleButton onClick={handleTextSubmit} className="mt-4">{t('confirmUse')}</AppleButton>
       </div>
 
       {showResumePromptManager && (

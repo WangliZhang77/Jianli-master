@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { saveApplication } from '../utils/applicationStorage'
 import { parseJobDescription } from '../utils/jobDescriptionParser'
+import AppleButton from './AppleButton'
 import toast from 'react-hot-toast'
 import { useAuth } from '../contexts/AuthContext'
 import { useI18n } from '../contexts/I18nContext'
@@ -108,44 +109,35 @@ function ApplicationRecord({
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-green-600 to-emerald-600 text-white p-4 flex justify-between items-center">
-          <h2 className="text-xl font-bold">{t('recordDelivery')}</h2>
-          <button
-            onClick={onCancel}
-            className="text-white hover:text-gray-200 text-2xl"
-          >
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-slate-950/90 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="p-4 border-b border-white/10 flex justify-between items-center">
+          <h2 className="text-xl font-bold text-white">{t('recordDelivery')}</h2>
+          <button onClick={onCancel} className="text-slate-400 hover:text-white text-2xl leading-none">
             ×
           </button>
         </div>
 
-        {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
           {aiDetecting && (
-            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="mb-4 p-3 bg-blue-500/20 border border-blue-400/30 rounded-xl">
               <div className="flex items-center space-x-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                <p className="text-sm text-blue-800">
-                  🤖 {t('aiDetecting')}
-                </p>
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white" />
+                <p className="text-sm text-blue-200">🤖 {t('aiDetecting')}</p>
               </div>
             </div>
           )}
           {autoDetected && !aiDetecting && (
-            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-sm text-green-800">
-                ✅ AI 已自动识别公司名称和职位，请确认或修改
-              </p>
+            <div className="mb-4 p-3 bg-emerald-500/20 border border-emerald-400/30 rounded-xl">
+              <p className="text-sm text-emerald-200">✅ AI 已自动识别公司名称和职位，请确认或修改</p>
             </div>
           )}
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('companyLabel')} <span className="text-red-500">*</span>
+              <label className="block text-sm font-medium text-slate-200 mb-2">
+                {t('companyLabel')} <span className="text-red-400">*</span>
                 {autoDetected && formData.companyName && (
-                  <span className="ml-2 text-xs text-green-600">{t('autoDetectedTag')}</span>
+                  <span className="ml-2 text-xs text-emerald-400">{t('autoDetectedTag')}</span>
                 )}
               </label>
               <input
@@ -153,15 +145,14 @@ function ApplicationRecord({
                 value={formData.companyName}
                 onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
                 placeholder={t('companyNamePlaceholder')}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                className="w-full p-2 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-400 focus:ring-2 focus:ring-white/20"
               />
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('positionLabel')} <span className="text-red-500">*</span>
+              <label className="block text-sm font-medium text-slate-200 mb-2">
+                {t('positionLabel')} <span className="text-red-400">*</span>
                 {autoDetected && formData.position && (
-                  <span className="ml-2 text-xs text-green-600">{t('autoDetectedTag')}</span>
+                  <span className="ml-2 text-xs text-emerald-400">{t('autoDetectedTag')}</span>
                 )}
               </label>
               <input
@@ -169,45 +160,30 @@ function ApplicationRecord({
                 value={formData.position}
                 onChange={(e) => setFormData({ ...formData, position: e.target.value })}
                 placeholder={t('positionPlaceholder')}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                className="w-full p-2 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-400 focus:ring-2 focus:ring-white/20"
               />
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('jobDescJd')}
-              </label>
+              <label className="block text-sm font-medium text-slate-200 mb-2">{t('jobDescJd')}</label>
               <textarea
                 value={formData.jobDescription}
                 onChange={(e) => setFormData({ ...formData, jobDescription: e.target.value })}
                 placeholder={t('jobDescPlaceholder')}
-                rows="6"
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 resize-none"
+                rows={6}
+                className="w-full p-2 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-400 focus:ring-2 focus:ring-white/20 resize-none"
               />
             </div>
-
-            <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-              <p className="text-sm text-blue-800">
-                💡 {t('hintResumeCoverAuto')}
-              </p>
+            <div className="bg-blue-500/20 p-3 rounded-xl border border-blue-400/30">
+              <p className="text-sm text-blue-200">💡 {t('hintResumeCoverAuto')}</p>
             </div>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="border-t border-gray-200 p-4 flex justify-end space-x-3">
-          <button
-            onClick={onCancel}
-            className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
-          >
-            {t('cancel')}
-          </button>
-          <button
-            onClick={handleSave}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-          >
+        <div className="border-t border-white/10 p-4 flex justify-end gap-2">
+          <AppleButton variant="secondary" onClick={onCancel}>{t('cancel')}</AppleButton>
+          <AppleButton onClick={handleSave} className="!bg-emerald-500/90 text-white hover:!bg-emerald-500">
             {t('saveRecord')}
-          </button>
+          </AppleButton>
         </div>
       </div>
     </div>

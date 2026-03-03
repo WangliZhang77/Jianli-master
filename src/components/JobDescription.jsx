@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { getPrompts, getPromptById } from '../utils/resumePromptStorage'
 import ResumePromptManager from './ResumePromptManager'
+import AppleButton from './AppleButton'
 import { useI18n } from '../contexts/I18nContext'
 
 function JobDescription({
@@ -21,85 +22,60 @@ function JobDescription({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">{t('jobDescTitle')}</h2>
-        <p className="text-gray-600 mb-6">
-          {t('jobDescHint')}
-        </p>
+        <h2 className="text-2xl font-bold text-white mb-4">{t('jobDescTitle')}</h2>
+        <p className="text-slate-300 mb-6">{t('jobDescHint')}</p>
         {hasResume ? (
-          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-            <p className="text-sm text-green-800">
-              {t('resumeReady', { n: resumeText.length })}
-            </p>
+          <div className="mb-4 p-3 bg-emerald-500/20 border border-emerald-400/30 rounded-xl">
+            <p className="text-sm text-emerald-200">{t('resumeReady', { n: resumeText.length })}</p>
           </div>
         ) : (
-          <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <p className="text-sm text-yellow-800">
-              {t('uploadResumeFirstHint')}
-            </p>
+          <div className="mb-4 p-3 bg-amber-500/20 border border-amber-400/30 rounded-xl">
+            <p className="text-sm text-amber-200">{t('uploadResumeFirstHint')}</p>
           </div>
         )}
       </div>
 
-      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+      <div className="p-4 bg-white/5 border border-white/10 rounded-xl">
         <div className="flex items-center justify-between mb-2">
-          <label className="block text-sm font-medium text-gray-700">
-            {t('resumePromptTemplate')}
-          </label>
-          <button
-            onClick={() => setShowPromptManager(true)}
-            className="px-3 py-1 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700"
-          >
+          <label className="block text-sm font-medium text-slate-200">{t('resumePromptTemplate')}</label>
+          <AppleButton variant="secondary" onClick={() => setShowPromptManager(true)} className="!py-1.5 !px-3 text-sm">
             {t('managePrompts')}
-          </button>
+          </AppleButton>
         </div>
         <select
           value={selectedResumePromptId}
           onChange={(e) => onResumePromptChange(e.target.value)}
-          className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+          className="w-full p-2 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-white/20"
         >
           {prompts.map((prompt) => (
-            <option key={prompt.id} value={prompt.id}>
-              {prompt.name}
-            </option>
+            <option key={prompt.id} value={prompt.id} className="bg-slate-800">{prompt.name}</option>
           ))}
         </select>
         {selectedPrompt && (
-          <div className="mt-3 p-3 bg-white rounded border border-gray-200">
-            <p className="text-xs text-gray-500 mb-1">{t('templatePreview')}</p>
-            <p className="text-sm text-gray-700 line-clamp-2">
-              {selectedPrompt.prompt.substring(0, 150)}...
-            </p>
+          <div className="mt-3 p-3 bg-white/5 rounded-lg border border-white/10">
+            <p className="text-xs text-slate-400 mb-1">{t('templatePreview')}</p>
+            <p className="text-sm text-slate-300 line-clamp-2">{selectedPrompt.prompt.substring(0, 150)}...</p>
           </div>
         )}
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          {t('companyAndJobLabel')}
-        </label>
+        <label className="block text-sm font-medium text-slate-200 mb-2">{t('companyAndJobLabel')}</label>
         <textarea
           value={jobDescription}
           onChange={(e) => setJobDescription(e.target.value)}
           placeholder={t('jobDescExample')}
-          className="w-full h-80 p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+          className="w-full h-80 p-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-400 focus:ring-2 focus:ring-white/20 resize-none"
         />
       </div>
 
       <div className="flex flex-col gap-3">
-        <button
-          onClick={onFullFlow}
-          disabled={!hasResume || !jobDescription.trim()}
-          className="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-lg shadow-lg"
-        >
+        <AppleButton onClick={onFullFlow} disabled={!hasResume || !jobDescription.trim()} className="w-full !py-3 text-lg">
           {t('oneClickGenerate')}
-        </button>
-        <button
-          onClick={onOptimize}
-          disabled={!hasResume || !jobDescription.trim()}
-          className="w-full px-6 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 text-sm"
-        >
+        </AppleButton>
+        <AppleButton variant="secondary" onClick={onOptimize} disabled={!hasResume || !jobDescription.trim()} className="w-full">
           {t('optimizeOnly')}
-        </button>
+        </AppleButton>
       </div>
 
       {showPromptManager && (

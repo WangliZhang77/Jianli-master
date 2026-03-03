@@ -1,5 +1,8 @@
 import { useState } from 'react'
 import { useI18n } from '../contexts/I18nContext'
+import AnimatedBackground from './AnimatedBackground'
+import GlassCard from './GlassCard'
+import AppleButton from './AppleButton'
 
 const TEXTS = {
   zh: {
@@ -57,71 +60,62 @@ function Auth({ onLogin, onRegister }) {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-indigo-100 py-12 px-4">
-      <div className="absolute top-4 right-4">
-        <button
-          type="button"
-          onClick={() => setLocale(locale === 'zh' ? 'en' : 'zh')}
-          className="px-3 py-1.5 rounded-lg bg-white/80 hover:bg-white shadow text-sm text-gray-700"
-        >
+    <div className="min-h-screen relative flex items-center justify-center py-12 px-4">
+      <AnimatedBackground />
+      <div className="absolute top-4 right-4 z-20">
+        <AppleButton variant="secondary" onClick={() => setLocale(locale === 'zh' ? 'en' : 'zh')}>
           {locale === 'zh' ? 'EN' : '中文'}
-        </button>
+        </AppleButton>
       </div>
-      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-8">
-        <h1 className="text-2xl font-bold text-center text-gray-800 mb-6">
+      <GlassCard className="relative z-10 max-w-md w-full p-8">
+        <h1 className="text-2xl font-bold text-center text-white mb-6">
           {tab === 'login' ? t('loginTab') : t('registerTab')}
         </h1>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('email')}</label>
+            <label className="block text-sm font-medium text-slate-200 mb-1">{t('email')}</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+              className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-400 focus:ring-2 focus:ring-white/20"
               placeholder="you@example.com"
               autoComplete="email"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('password')}</label>
+            <label className="block text-sm font-medium text-slate-200 mb-1">{t('password')}</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+              className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-400 focus:ring-2 focus:ring-white/20"
               placeholder="••••••••"
               autoComplete={tab === 'login' ? 'current-password' : 'new-password'}
             />
             {tab === 'register' && (
-              <p className="mt-1 text-xs text-gray-500">
-                {tApp('authMinChars')}
-              </p>
+              <p className="mt-1 text-xs text-slate-400">{tApp('authMinChars')}</p>
             )}
           </div>
           {error && (
-            <div className="p-2 rounded bg-red-50 text-red-700 text-sm">{error}</div>
+            <div className="p-2 rounded-lg bg-red-500/20 text-red-200 text-sm border border-red-400/30">{error}</div>
           )}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 disabled:opacity-50"
-          >
+          <AppleButton type="submit" disabled={loading} className="w-full">
             {loading ? tApp('authLoading') : (tab === 'login' ? t('login') : t('register'))}
-          </button>
+          </AppleButton>
         </form>
-        <p className="mt-4 text-center text-sm text-gray-600">
+        <p className="mt-4 text-center text-sm text-slate-300">
           {tab === 'login' ? (
-            <button type="button" onClick={() => setTab('register')} className="text-purple-600 hover:underline">
+            <button type="button" onClick={() => setTab('register')} className="text-white hover:underline">
               {t('noAccount')}
             </button>
           ) : (
-            <button type="button" onClick={() => setTab('login')} className="text-purple-600 hover:underline">
+            <button type="button" onClick={() => setTab('login')} className="text-white hover:underline">
               {t('hasAccount')}
             </button>
           )}
         </p>
-      </div>
+      </GlassCard>
     </div>
   )
 }

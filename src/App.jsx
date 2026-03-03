@@ -4,6 +4,9 @@ import JobDescription from './components/JobDescription'
 import OptimizedResume from './components/OptimizedResume'
 import CoverLetter from './components/CoverLetter'
 import ApplicationHistory from './components/ApplicationHistory'
+import AnimatedBackground from './components/AnimatedBackground'
+import GlassCard from './components/GlassCard'
+import AppleButton from './components/AppleButton'
 import { getPromptById } from './utils/promptStorage'
 import { parseJobDescription } from './utils/jobDescriptionParser'
 import { extractIndustryAndPosition } from './utils/jobInfoExtractor'
@@ -12,6 +15,7 @@ import toast from 'react-hot-toast'
 import { useI18n } from './contexts/I18nContext'
 import { useAuth } from './contexts/AuthContext'
 import Auth from './components/Auth'
+import { Sparkles } from 'lucide-react'
 
 function App() {
   const { token, user, login, register, logout } = useAuth()
@@ -217,73 +221,64 @@ function App() {
     // 注意：不清理投递记录，投递记录保存在 localStorage 中，会保留
   }
 
+  const tabs = [
+    { key: 'upload', label: t('tabUpload') },
+    { key: 'job', label: t('tabJob') },
+    { key: 'resume', label: t('tabResume'), disabled: !optimizedResume },
+    { key: 'coverLetter', label: t('tabCoverLetter'), disabled: !coverLetter },
+    { key: 'history', label: `📋 ${t('tabHistory')}` },
+  ]
+
   return (
-    <div className="min-h-screen py-8 px-4">
-      <div className="max-w-6xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-6">
-            <div className="flex justify-between items-center flex-wrap gap-2">
-              <div>
-                <h1 className="text-3xl font-bold mb-2">{t('appTitle')}</h1>
-                <p className="text-purple-100">{t('appSubtitle')}</p>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-white/90 text-sm mr-2">{user?.email}</span>
-                <button
-                  type="button"
-                  onClick={logout}
-                  className="px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-sm"
-                >
-                  {t('logout')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLocale(locale === 'zh' ? 'en' : 'zh')}
-                  className="px-3 py-1.5 rounded-lg bg-white bg-opacity-20 hover:bg-opacity-30 text-sm font-medium"
-                >
-                  {locale === 'zh' ? t('switchEn') : t('switchZh')}
-                </button>
-                <button
-                  onClick={() => {
-                    setApiKeyInput(openaiApiKey)
-                    setShowApiKeyModal(true)
-                  }}
-                  className={`px-4 py-2 rounded-lg font-medium transition-all ${openaiApiKey.trim() ? 'bg-green-500 bg-opacity-90 hover:bg-opacity-100' : 'bg-amber-500 bg-opacity-90 hover:bg-opacity-100'}`}
-                >
-                  {openaiApiKey.trim() ? `🔑 ${t('apiKeySet')}` : `🔑 ${t('setApiKey')}`}
-                </button>
-                <button
-                  onClick={() => setActiveTab('history')}
-                  className="px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg text-white font-medium transition-all"
-                >
-                  📋 {t('viewHistory')}
-                </button>
+    <div className="min-h-screen relative">
+      <AnimatedBackground />
+      <div className="relative z-10 min-h-screen py-8 px-4">
+        <div className="max-w-6xl mx-auto space-y-4">
+          <GlassCard>
+            <div className="p-6">
+              <div className="flex justify-between items-center flex-wrap gap-2">
+                <div className="flex items-center gap-3">
+                  <Sparkles className="w-8 h-8 text-white/90" />
+                  <div>
+                    <h1 className="text-2xl md:text-3xl font-bold text-white">{t('appTitle')}</h1>
+                    <p className="text-slate-300 text-sm">{t('appSubtitle')}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-slate-300 text-sm mr-2">{user?.email}</span>
+                  <AppleButton variant="secondary" onClick={logout}>{t('logout')}</AppleButton>
+                  <AppleButton variant="secondary" onClick={() => setLocale(locale === 'zh' ? 'en' : 'zh')}>
+                    {locale === 'zh' ? t('switchEn') : t('switchZh')}
+                  </AppleButton>
+                  <AppleButton
+                    onClick={() => { setApiKeyInput(openaiApiKey); setShowApiKeyModal(true) }}
+                    className={openaiApiKey.trim() ? 'bg-emerald-500/90 text-white hover:bg-emerald-500' : 'bg-amber-500/90 text-white hover:bg-amber-500'}
+                  >
+                    🔑 {openaiApiKey.trim() ? t('apiKeySet') : t('setApiKey')}
+                  </AppleButton>
+                  <AppleButton variant="secondary" onClick={() => setActiveTab('history')}>
+                    📋 {t('viewHistory')}
+                  </AppleButton>
+                </div>
               </div>
             </div>
-          </div>
+          </GlassCard>
 
-          {/* 设置 API Key 弹窗 */}
           {showApiKeyModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-                <h3 className="text-lg font-bold text-gray-800 mb-2">{t('apiKeyModalTitle')}</h3>
-                <p className="text-sm text-gray-600 mb-4">{t('apiKeyModalHint')}</p>
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+              <div className="bg-slate-950/90 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl max-w-md w-full p-6">
+                <h3 className="text-lg font-bold text-white mb-2">{t('apiKeyModalTitle')}</h3>
+                <p className="text-sm text-slate-400 mb-4">{t('apiKeyModalHint')}</p>
                 <input
                   type="password"
                   placeholder="sk-..."
                   value={apiKeyInput}
                   onChange={(e) => setApiKeyInput(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 mb-4"
+                  className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-400 focus:ring-2 focus:ring-white/20 focus:border-white/20 mb-4"
                 />
                 <div className="flex justify-end gap-2">
-                  <button
-                    onClick={() => setShowApiKeyModal(false)}
-                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
-                  >
-                    {t('cancel')}
-                  </button>
-                  <button
+                  <AppleButton variant="secondary" onClick={() => setShowApiKeyModal(false)}>{t('cancel')}</AppleButton>
+                  <AppleButton
                     onClick={() => {
                       const v = apiKeyInput.trim()
                       setApiKey(v)
@@ -291,134 +286,93 @@ function App() {
                       setShowApiKeyModal(false)
                       if (v) toast.success(t('apiKeySaved'))
                     }}
-                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
                   >
                     {t('save')}
-                  </button>
+                  </AppleButton>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Tabs */}
-          <div className="border-b border-gray-200">
-            <nav className="flex -mb-px">
-              <button
-                onClick={() => setActiveTab('upload')}
-                className={`px-6 py-4 font-medium text-sm ${
-                  activeTab === 'upload'
-                    ? 'border-b-2 border-purple-600 text-purple-600'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                {t('tabUpload')}
-              </button>
-              <button
-                onClick={() => setActiveTab('job')}
-                className={`px-6 py-4 font-medium text-sm ${
-                  activeTab === 'job'
-                    ? 'border-b-2 border-purple-600 text-purple-600'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                {t('tabJob')}
-              </button>
-              <button
-                onClick={() => setActiveTab('resume')}
-                className={`px-6 py-4 font-medium text-sm ${
-                  activeTab === 'resume'
-                    ? 'border-b-2 border-purple-600 text-purple-600'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-                disabled={!optimizedResume}
-              >
-                {t('tabResume')}
-              </button>
-              <button
-                onClick={() => setActiveTab('coverLetter')}
-                className={`px-6 py-4 font-medium text-sm ${
-                  activeTab === 'coverLetter'
-                    ? 'border-b-2 border-purple-600 text-purple-600'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-                disabled={!coverLetter}
-              >
-                {t('tabCoverLetter')}
-              </button>
-              <button
-                onClick={() => setActiveTab('history')}
-                className={`px-6 py-4 font-medium text-sm ${
-                  activeTab === 'history'
-                    ? 'border-b-2 border-purple-600 text-purple-600'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                📋 {t('tabHistory')}
-              </button>
-            </nav>
-          </div>
+          <GlassCard delay={0.05}>
+            <div className="p-4 md:p-6">
+              <nav className="flex flex-wrap gap-1 p-1 rounded-2xl bg-white/5 border border-white/10 w-fit">
+                {tabs.map(({ key, label, disabled }) => (
+                  <button
+                    key={key}
+                    onClick={() => !disabled && setActiveTab(key)}
+                    disabled={disabled}
+                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                      activeTab === key
+                        ? 'bg-white/20 text-white'
+                        : 'text-slate-400 hover:text-white hover:bg-white/10'
+                    } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </nav>
 
-          {/* Content */}
-          <div className="p-6">
-            {loading && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="bg-white rounded-lg p-6">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
-                  <p className="mt-4 text-gray-600">{t('loading')}</p>
-                </div>
+              <div className="mt-6">
+                {loading && (
+                  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+                    <div className="bg-slate-900/90 border border-white/10 rounded-2xl p-8">
+                      <div className="animate-spin rounded-full h-12 w-12 border-2 border-white/30 border-t-white mx-auto" />
+                      <p className="mt-4 text-slate-300">{t('loading')}</p>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'upload' && (
+                  <ResumeUpload
+                    onUpload={handleResumeUpload}
+                    existingResume={resumeText}
+                    selectedResumePromptId={selectedResumePromptId}
+                    onResumePromptChange={handleResumePromptChange}
+                    selectedCoverLetterPromptId={selectedCoverLetterPromptId}
+                    onCoverLetterPromptChange={handleCoverLetterPromptChange}
+                  />
+                )}
+
+                {activeTab === 'job' && (
+                  <JobDescription
+                    jobDescription={jobDescription}
+                    setJobDescription={setJobDescription}
+                    onFullFlow={handleFullFlow}
+                    onOptimize={handleOptimizeResume}
+                    hasResume={!!resumeText}
+                    resumeText={resumeText}
+                    selectedResumePromptId={selectedResumePromptId}
+                    onResumePromptChange={handleResumePromptChange}
+                  />
+                )}
+
+                {activeTab === 'resume' && (
+                  <OptimizedResume
+                    originalResume={resumeText}
+                    optimizedResume={optimizedResume}
+                    onGenerateCoverLetter={handleGenerateCoverLetter}
+                    selectedCoverLetterPromptId={selectedCoverLetterPromptId}
+                    onCoverLetterPromptChange={handleCoverLetterPromptChange}
+                  />
+                )}
+
+                {activeTab === 'coverLetter' && (
+                  <CoverLetter
+                    coverLetter={coverLetter}
+                    companyName={companyName}
+                    position={position}
+                    jobDescription={jobDescription}
+                    resume={optimizedResume}
+                    onNextApplication={handleNextApplication}
+                    openaiApiKey={openaiApiKey}
+                  />
+                )}
+
+                {activeTab === 'history' && <ApplicationHistory />}
               </div>
-            )}
-
-            {activeTab === 'upload' && (
-              <ResumeUpload
-                onUpload={handleResumeUpload}
-                existingResume={resumeText}
-                selectedResumePromptId={selectedResumePromptId}
-                onResumePromptChange={handleResumePromptChange}
-                selectedCoverLetterPromptId={selectedCoverLetterPromptId}
-                onCoverLetterPromptChange={handleCoverLetterPromptChange}
-              />
-            )}
-
-            {activeTab === 'job' && (
-              <JobDescription
-                jobDescription={jobDescription}
-                setJobDescription={setJobDescription}
-                onFullFlow={handleFullFlow}
-                onOptimize={handleOptimizeResume}
-                hasResume={!!resumeText}
-                resumeText={resumeText}
-                selectedResumePromptId={selectedResumePromptId}
-                onResumePromptChange={handleResumePromptChange}
-              />
-            )}
-
-            {activeTab === 'resume' && (
-              <OptimizedResume
-                originalResume={resumeText}
-                optimizedResume={optimizedResume}
-                onGenerateCoverLetter={handleGenerateCoverLetter}
-                selectedCoverLetterPromptId={selectedCoverLetterPromptId}
-                onCoverLetterPromptChange={handleCoverLetterPromptChange}
-              />
-            )}
-
-            {activeTab === 'coverLetter' && (
-              <CoverLetter
-                coverLetter={coverLetter}
-                companyName={companyName}
-                position={position}
-                jobDescription={jobDescription}
-                resume={optimizedResume}
-                onNextApplication={handleNextApplication}
-                openaiApiKey={openaiApiKey}
-              />
-            )}
-
-            {activeTab === 'history' && (
-              <ApplicationHistory />
-            )}
-          </div>
+            </div>
+          </GlassCard>
         </div>
       </div>
     </div>
