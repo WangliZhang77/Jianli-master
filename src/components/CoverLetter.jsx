@@ -44,7 +44,7 @@ function CoverLetter({
       await exportCoverLetterToDocxFormatted(coverLetter, companyName, position)
       // 不显示alert，因为文件已经开始下载
     } catch (error) {
-      alert('导出失败: ' + error.message)
+      alert(t('exportFailed') + ': ' + error.message)
     } finally {
       setExporting(false)
     }

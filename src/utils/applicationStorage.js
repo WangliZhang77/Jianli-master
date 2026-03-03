@@ -1,4 +1,6 @@
 // 投递记录存储工具
+import { messages } from './i18n'
+
 const STORAGE_KEY = 'jobApplications'
 
 export function getApplications() {
@@ -42,6 +44,17 @@ export function deleteApplication(id) {
   }
 }
 
+/** 清空本地投递记录（导入到账号后可选调用，避免重复导入） */
+export function clearLocalApplications() {
+  try {
+    localStorage.removeItem(STORAGE_KEY)
+    return true
+  } catch (error) {
+    console.error('清空本地投递记录失败:', error)
+    throw error
+  }
+}
+
 export function getApplicationsByDate(date) {
   const applications = getApplications()
   const targetDate = new Date(date).toDateString()
@@ -71,17 +84,17 @@ export function getDailyCounts() {
   return counts
 }
 
-// 按岗位统计投递数量
-export function getPositionCounts(applications = null) {
+// 按岗位统计投递数量；locale 用于“未知职位”等文案
+export function getPositionCounts(applications = null, locale = 'zh') {
   const apps = applications || getApplications()
   const counts = {}
-  
+  const unknown = messages[locale]?.unknownPosition ?? '未知职位'
+
   apps.forEach(app => {
-    const position = app.position || '未知职位'
+    const position = app.position || unknown
     counts[position] = (counts[position] || 0) + 1
   })
-  
-  // 转换为数组并按数量排序
+
   return Object.entries(counts)
     .map(([position, count]) => ({ position, count }))
     .sort((a, b) => b.count - a.count)
@@ -110,21 +123,21 @@ export function filterApplicationsByDateRange(applications, filterType, dateValu
   })
 }
 
-export function exportToCSV() {
-  const applications = getApplications()
-  
+export function exportToCSV(applicationsOverride, locale = 'zh') {
+  const applications = applicationsOverride ?? getApplications()
+  const m = messages[locale] || messages.zh
+
   if (applications.length === 0) {
-    throw new Error('没有投递记录可导出')
+    throw new Error(m.noApplicationsExport || '没有投递记录可导出')
   }
-  
-  // CSV 头部
-  const headers = ['日期', '公司名称', '职位', '岗位描述', '简历内容', '推荐信内容']
+
+  const headers = [m.csvDate, m.csvCompany, m.csvPosition, m.csvJobDesc, m.csvResume, m.csvCoverLetter]
   const rows = [headers.join(',')]
   
-  // 数据行
+  const dateLocale = locale === 'en' ? 'en-US' : 'zh-CN'
   applications.forEach(app => {
     const row = [
-      new Date(app.date).toLocaleString('zh-CN'),
+      new Date(app.date).toLocaleString(dateLocale),
       `"${(app.companyName || '').replace(/"/g, '""')}"`,
       `"${(app.position || '').replace(/"/g, '""')}"`,
       `"${(app.jobDescription || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`,
@@ -137,7 +150,7 @@ export function exportToCSV() {
   return rows.join('\n')
 }
 
-export function exportToJSON() {
-  const applications = getApplications()
+export function exportToJSON(applicationsOverride) {
+  const applications = applicationsOverride ?? getApplications()
   return JSON.stringify(applications, null, 2)
 }

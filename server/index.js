@@ -43,6 +43,9 @@ import { generateCoverLetter } from './services/coverLetterService.js'
 import { parseResumeFile } from './utils/fileParser.js'
 import { extractJobInfo } from './services/jobInfoExtractor.js'
 import { runFullFlow } from './services/fullFlowService.js'
+import './db.js'
+import authRoutes from './routes/auth.js'
+import applicationsRoutes from './routes/applications.js'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -102,6 +105,9 @@ const upload = multer({
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: '服务器运行正常' })
 })
+
+app.use('/api/auth', authRoutes)
+app.use('/api/applications', applicationsRoutes)
 
 // Routes
 app.post('/api/upload-resume', (req, res, next) => {

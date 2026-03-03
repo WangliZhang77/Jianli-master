@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { getPrompts, getPromptById } from '../utils/promptStorage'
 import PromptManager from './PromptManager'
+import { useI18n } from '../contexts/I18nContext'
 
 function OptimizedResume({
   originalResume,
@@ -10,40 +11,40 @@ function OptimizedResume({
   onCoverLetterPromptChange,
 }) {
   const [showPromptManager, setShowPromptManager] = useState(false)
+  const { t } = useI18n()
   const prompts = getPrompts()
   const selectedPrompt = getPromptById(selectedCoverLetterPromptId) || prompts[0]
 
   const handleCopy = (text) => {
     navigator.clipboard.writeText(text)
-    alert('已复制到剪贴板')
+    alert(t('copied'))
   }
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">优化后的简历</h2>
+        <h2 className="text-2xl font-bold text-gray-800">{t('optimizedResumeTitle')}</h2>
         <div className="flex space-x-3">
           <button
             onClick={() => setShowPromptManager(true)}
             className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm"
           >
-            管理推荐信提示词
+            {t('manageCoverLetterPrompts')}
           </button>
           <button
             onClick={onGenerateCoverLetter}
             className="px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 font-medium"
           >
-            生成推荐信
+            {t('generateCoverLetter')}
           </button>
         </div>
       </div>
 
-      {/* 推荐信提示词选择 */}
       <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
         <div className="flex items-center justify-between">
           <div className="flex-1">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              推荐信提示词模板
+              {t('coverLetterPromptTemplate')}
             </label>
             <select
               value={selectedCoverLetterPromptId}
@@ -60,7 +61,7 @@ function OptimizedResume({
         </div>
         {selectedPrompt && (
           <div className="mt-3 p-3 bg-white rounded border border-gray-200">
-            <p className="text-xs text-gray-500 mb-1">模板预览：</p>
+            <p className="text-xs text-gray-500 mb-1">{t('templatePreview')}</p>
             <p className="text-sm text-gray-700 line-clamp-2">
               {selectedPrompt.prompt.substring(0, 150)}...
             </p>
@@ -83,12 +84,12 @@ function OptimizedResume({
         {/* Original Resume */}
         <div className="border border-gray-300 rounded-lg overflow-hidden">
           <div className="bg-gray-100 px-4 py-2 border-b border-gray-300 flex justify-between items-center">
-            <h3 className="font-medium text-gray-700">原始简历</h3>
+            <h3 className="font-medium text-gray-700">{t('originalResume')}</h3>
             <button
               onClick={() => handleCopy(originalResume)}
               className="text-sm text-purple-600 hover:text-purple-700"
             >
-              复制
+              {t('copy')}
             </button>
           </div>
           <div className="p-4 h-96 overflow-y-auto bg-white">
@@ -101,12 +102,12 @@ function OptimizedResume({
         {/* Optimized Resume */}
         <div className="border border-purple-300 rounded-lg overflow-hidden">
           <div className="bg-purple-100 px-4 py-2 border-b border-purple-300 flex justify-between items-center">
-            <h3 className="font-medium text-purple-700">优化简历</h3>
+            <h3 className="font-medium text-purple-700">{t('optimizedResumeLabel')}</h3>
             <button
               onClick={() => handleCopy(optimizedResume)}
               className="text-sm text-purple-600 hover:text-purple-700"
             >
-              复制
+              {t('copy')}
             </button>
           </div>
           <div className="p-4 h-96 overflow-y-auto bg-white">

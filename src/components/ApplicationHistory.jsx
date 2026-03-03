@@ -1,79 +1,146 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { 
   getApplications, 
   deleteApplication, 
+  clearLocalApplications,
   getDailyCounts,
   getPositionCounts,
   filterApplicationsByDateRange,
   exportToCSV,
   exportToJSON 
 } from '../utils/applicationStorage'
+import { useAuth } from '../contexts/AuthContext'
+import { useI18n } from '../contexts/I18nContext'
 
 function ApplicationHistory() {
+  const { token } = useAuth()
+  const { locale, t } = useI18n()
+  const dateLocale = locale === 'en' ? 'en-US' : 'zh-CN'
+  const weekDays = [t('weekDay0'), t('weekDay1'), t('weekDay2'), t('weekDay3'), t('weekDay4'), t('weekDay5'), t('weekDay6')]
   const [applications, setApplications] = useState([])
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [viewMode, setViewMode] = useState('list') // 'list', 'calendar', or 'chart'
   const [selectedApp, setSelectedApp] = useState(null)
   const [filterType, setFilterType] = useState('all') // 'all', 'year', 'month', 'day'
   const [filterDate, setFilterDate] = useState('')
+  const [importing, setImporting] = useState(false)
+
+  const localCount = token ? getApplications().length : 0
+
+  const loadApplications = useCallback(async () => {
+    if (token) {
+      try {
+        const res = await fetch('/api/applications', { headers: { Authorization: `Bearer ${token}` } })
+        if (!res.ok) throw new Error(t('loadFailed'))
+        const data = await res.json()
+        setApplications(data)
+      } catch (e) {
+        alert(t('loadFailed') + ': ' + (e.message || e))
+        setApplications([])
+      }
+    } else {
+      setApplications(getApplications())
+    }
+  }, [token])
 
   useEffect(() => {
     loadApplications()
-  }, [])
+  }, [loadApplications])
 
-  const loadApplications = () => {
-    setApplications(getApplications())
-  }
-
-  const handleDelete = (id) => {
-    if (!confirm('确定要删除这条投递记录吗？')) {
+  const handleDelete = async (id) => {
+    if (!confirm(t('confirmDelete'))) {
       return
     }
 
     try {
-      deleteApplication(id)
-      loadApplications()
+      if (token) {
+        const res = await fetch(`/api/applications/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+        if (!res.ok) throw new Error(t('deleteFailed'))
+      } else {
+        deleteApplication(id)
+      }
+      await loadApplications()
       if (selectedApp?.id === id) {
         setSelectedApp(null)
       }
     } catch (error) {
-      alert('删除失败: ' + error.message)
+      alert(t('deleteFailed') + ': ' + error.message)
     }
   }
 
   const handleExportCSV = () => {
     try {
-      const csv = exportToCSV()
+      const csv = exportToCSV(applications, locale)
       const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `投递记录_${new Date().toISOString().split('T')[0]}.csv`
+      a.download = `${locale === 'en' ? 'applications' : '投递记录'}_${new Date().toISOString().split('T')[0]}.csv`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
-      alert('导出成功！')
+      alert(t('exportSuccess'))
     } catch (error) {
-      alert('导出失败: ' + error.message)
+      alert(t('exportFailed') + ': ' + error.message)
     }
   }
 
   const handleExportJSON = () => {
     try {
-      const json = exportToJSON()
+      const json = exportToJSON(applications)
       const blob = new Blob([json], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `投递记录_${new Date().toISOString().split('T')[0]}.json`
+      a.download = `${locale === 'en' ? 'applications' : '投递记录'}_${new Date().toISOString().split('T')[0]}.json`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
-      alert('导出成功！')
+      alert(t('exportSuccess'))
     } catch (error) {
-      alert('导出失败: ' + error.message)
+      alert(t('exportFailed') + ': ' + error.message)
+    }
+  }
+
+  const handleImportLocal = async () => {
+    const local = getApplications()
+    if (local.length === 0) {
+      alert(t('noLocalRecordsToImport'))
+      return
+    }
+    setImporting(true)
+    try {
+      const res = await fetch('/api/applications/import', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          applications: local.map((app) => ({
+            date: app.date,
+            companyName: app.companyName || '',
+            position: app.position || '',
+            jobDescription: app.jobDescription || '',
+            resume: app.resume || '',
+            coverLetter: app.coverLetter || '',
+          })),
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || t('loadFailed'))
+      const imported = data.imported ?? local.length
+      alert(t('importSuccess', { n: imported }))
+      await loadApplications()
+      if (confirm(t('importSuccessClear'))) {
+        clearLocalApplications()
+      }
+    } catch (e) {
+      alert(t('importFailed') + (e.message || e))
+    } finally {
+      setImporting(false)
     }
   }
 
@@ -88,8 +155,7 @@ function ApplicationHistory() {
     return filterApplicationsByDateRange(applications, filterType, filterDate)
   }, [applications, filterType, filterDate])
 
-  // 按岗位统计
-  const positionCounts = useMemo(() => getPositionCounts(filteredApplications), [filteredApplications])
+  const positionCounts = useMemo(() => getPositionCounts(filteredApplications, locale), [filteredApplications, locale])
 
   // 获取当前月的日期和投递数量
   const getCalendarDays = () => {
@@ -125,9 +191,9 @@ function ApplicationHistory() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">投递记录</h2>
+          <h2 className="text-2xl font-bold text-gray-800">{t('historyTitle')}</h2>
           <p className="text-gray-600 mt-1">
-            共 {totalCount} 条记录
+            {t('totalRecords', { n: totalCount })}
           </p>
         </div>
         <div className="flex space-x-3">
@@ -139,7 +205,7 @@ function ApplicationHistory() {
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
-            📋 列表
+            📋 {t('viewList')}
           </button>
           <button
             onClick={() => setViewMode('calendar')}
@@ -149,7 +215,7 @@ function ApplicationHistory() {
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
-            📅 日历
+            📅 {t('viewCalendar')}
           </button>
           <button
             onClick={() => setViewMode('chart')}
@@ -159,20 +225,30 @@ function ApplicationHistory() {
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
-            📊 图表
+            📊 {t('viewChart')}
           </button>
           <button
             onClick={handleExportCSV}
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
           >
-            导出 CSV
+            {t('exportCSV')}
           </button>
           <button
             onClick={handleExportJSON}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
-            导出 JSON
+            {t('exportJSON')}
           </button>
+          {localCount > 0 && (
+            <button
+              type="button"
+              onClick={handleImportLocal}
+              disabled={importing}
+              className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50"
+            >
+              {importing ? t('importingLabel') : t('importLocalRecordsCount', { n: localCount })}
+            </button>
+          )}
         </div>
       </div>
 
@@ -180,7 +256,7 @@ function ApplicationHistory() {
       {viewMode === 'chart' && (
         <div className="bg-white border border-gray-300 rounded-lg p-4">
           <div className="flex items-center space-x-4">
-            <label className="text-sm font-medium text-gray-700">时间筛选：</label>
+            <label className="text-sm font-medium text-gray-700">{t('timeFilter')}</label>
             <select
               value={filterType}
               onChange={(e) => {
@@ -202,10 +278,10 @@ function ApplicationHistory() {
               }}
               className="px-3 py-2 border border-gray-300 rounded-lg"
             >
-              <option value="all">全部</option>
-              <option value="year">按年</option>
-              <option value="month">按月</option>
-              <option value="day">按日</option>
+              <option value="all">{t('filterAll')}</option>
+              <option value="year">{t('filterByYear')}</option>
+              <option value="month">{t('filterByMonth')}</option>
+              <option value="day">{t('filterByDay')}</option>
             </select>
             {filterType !== 'all' && (
               <input
@@ -213,13 +289,13 @@ function ApplicationHistory() {
                 value={filterDate}
                 onChange={(e) => setFilterDate(e.target.value)}
                 className="px-3 py-2 border border-gray-300 rounded-lg"
-                placeholder={filterType === 'year' ? '年份' : filterType === 'month' ? '年月' : '日期'}
+                placeholder={filterType === 'year' ? t('filterYear') : filterType === 'month' ? t('filterMonth') : t('filterDate')}
                 min={filterType === 'year' ? '2020' : undefined}
                 max={filterType === 'year' ? new Date().getFullYear() : undefined}
               />
             )}
             <span className="text-sm text-gray-600">
-              筛选后：{filteredApplications.length} 条记录
+              {t('filterCount', { n: filteredApplications.length })}
             </span>
           </div>
         </div>
@@ -237,10 +313,10 @@ function ApplicationHistory() {
               }}
               className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300"
             >
-              ← 上个月
+              {t('prevMonth')}
             </button>
             <h3 className="text-lg font-bold">
-              {selectedDate.getFullYear()}年 {selectedDate.getMonth() + 1}月
+              {locale === 'en' ? `${selectedDate.getMonth() + 1}/${selectedDate.getFullYear()}` : `${selectedDate.getFullYear()}年 ${selectedDate.getMonth() + 1}月`}
             </h3>
             <button
               onClick={() => {
@@ -250,12 +326,12 @@ function ApplicationHistory() {
               }}
               className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300"
             >
-              下个月 →
+              {t('nextMonth')}
             </button>
           </div>
 
           <div className="grid grid-cols-7 gap-2">
-            {['日', '一', '二', '三', '四', '五', '六'].map(day => (
+            {weekDays.map(day => (
               <div key={day} className="text-center font-bold text-gray-600 py-2">
                 {day}
               </div>
@@ -308,15 +384,15 @@ function ApplicationHistory() {
           <div className="mt-4 flex items-center space-x-4 text-sm">
             <div className="flex items-center space-x-2">
               <div className="w-4 h-4 bg-green-500 rounded"></div>
-              <span>1-2 个</span>
+              <span>{t('count1to2')}</span>
             </div>
             <div className="flex items-center space-x-2">
               <div className="w-4 h-4 bg-orange-500 rounded"></div>
-              <span>3-4 个</span>
+              <span>{t('count3to4')}</span>
             </div>
             <div className="flex items-center space-x-2">
               <div className="w-4 h-4 bg-red-500 rounded"></div>
-              <span>5+ 个</span>
+              <span>{t('count5plus')}</span>
             </div>
           </div>
         </div>
@@ -326,12 +402,12 @@ function ApplicationHistory() {
       {viewMode === 'chart' && (
         <div className="bg-white border border-gray-300 rounded-lg p-6">
           <h3 className="text-xl font-bold text-gray-800 mb-6">
-            岗位投递统计
+            {t('positionStats')}
           </h3>
           
           {positionCounts.length === 0 ? (
             <div className="text-center py-12 bg-gray-50 rounded-lg">
-              <p className="text-gray-500">没有投递记录</p>
+              <p className="text-gray-500">{t('noRecords')}</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -346,7 +422,7 @@ function ApplicationHistory() {
                         {item.position}
                       </span>
                       <span className="text-sm font-bold text-purple-600 min-w-[3rem] text-right">
-                        {item.count} 份
+                        {item.count}{t('countUnit') ? ` ${t('countUnit')}` : ''}
                       </span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-6 overflow-hidden">
@@ -373,13 +449,13 @@ function ApplicationHistory() {
                 <div className="text-2xl font-bold text-purple-600">
                   {filteredApplications.length}
                 </div>
-                <div className="text-sm text-gray-600">总投递数</div>
+                <div className="text-sm text-gray-600">{t('totalApplications')}</div>
               </div>
               <div>
                 <div className="text-2xl font-bold text-indigo-600">
                   {positionCounts.length}
                 </div>
-                <div className="text-sm text-gray-600">岗位种类</div>
+                <div className="text-sm text-gray-600">{t('positionTypes')}</div>
               </div>
               <div>
                 <div className="text-2xl font-bold text-blue-600">
@@ -387,7 +463,7 @@ function ApplicationHistory() {
                     ? (filteredApplications.length / positionCounts.length).toFixed(1)
                     : 0}
                 </div>
-                <div className="text-sm text-gray-600">平均投递数</div>
+                <div className="text-sm text-gray-600">{t('avgApplications')}</div>
               </div>
             </div>
           </div>
@@ -399,8 +475,8 @@ function ApplicationHistory() {
         <div className="space-y-4">
           {filteredApplications.length === 0 ? (
             <div className="text-center py-12 bg-gray-50 rounded-lg">
-              <p className="text-gray-500">还没有投递记录</p>
-              <p className="text-sm text-gray-400 mt-2">生成推荐信后可以记录投递</p>
+              <p className="text-gray-500">{t('noRecordsHint')}</p>
+              <p className="text-sm text-gray-400 mt-2">{t('noRecordsHint2')}</p>
             </div>
           ) : (
             filteredApplications.map((app) => (
@@ -420,7 +496,7 @@ function ApplicationHistory() {
                       </span>
                     </div>
                     <p className="text-sm text-gray-500">
-                      {new Date(app.date).toLocaleString('zh-CN')}
+                      {new Date(app.date).toLocaleString(dateLocale)}
                     </p>
                     {app.jobDescription && (
                       <p className="text-sm text-gray-600 mt-2 line-clamp-2">
@@ -435,7 +511,7 @@ function ApplicationHistory() {
                     }}
                     className="ml-4 px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
                   >
-                    删除
+                    {t('delete')}
                   </button>
                 </div>
               </div>
@@ -450,7 +526,7 @@ function ApplicationHistory() {
           <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-4 flex justify-between items-center">
               <h2 className="text-xl font-bold">
-                投递详情 - {new Date(selectedApp.date).toLocaleDateString('zh-CN')}
+                {t('detailTitle')} - {new Date(selectedApp.date).toLocaleDateString(dateLocale)}
               </h2>
               <button
                 onClick={() => setSelectedApp(null)}
@@ -468,13 +544,13 @@ function ApplicationHistory() {
                       {app.companyName} - {app.position}
                     </h3>
                     <p className="text-sm text-gray-500">
-                      {new Date(app.date).toLocaleString('zh-CN')}
+                      {new Date(app.date).toLocaleString(dateLocale)}
                     </p>
                   </div>
 
                   {app.jobDescription && (
                     <div className="mb-4">
-                      <h4 className="font-medium text-gray-700 mb-2">岗位描述</h4>
+                      <h4 className="font-medium text-gray-700 mb-2">{t('jobDescLabel')}</h4>
                       <div className="p-3 bg-gray-50 rounded border border-gray-200">
                         <pre className="whitespace-pre-wrap text-sm text-gray-700">
                           {app.jobDescription}
@@ -485,7 +561,7 @@ function ApplicationHistory() {
 
                   {app.resume && (
                     <div className="mb-4">
-                      <h4 className="font-medium text-gray-700 mb-2">简历内容</h4>
+                      <h4 className="font-medium text-gray-700 mb-2">{t('resumeContentLabel')}</h4>
                       <div className="p-3 bg-gray-50 rounded border border-gray-200 max-h-40 overflow-y-auto">
                         <pre className="whitespace-pre-wrap text-sm text-gray-700">
                           {app.resume.substring(0, 500)}...
@@ -496,7 +572,7 @@ function ApplicationHistory() {
 
                   {app.coverLetter && (
                     <div>
-                      <h4 className="font-medium text-gray-700 mb-2">推荐信</h4>
+                      <h4 className="font-medium text-gray-700 mb-2">{t('coverLetterLabel')}</h4>
                       <div className="p-3 bg-purple-50 rounded border border-purple-200 max-h-60 overflow-y-auto">
                         <pre className="whitespace-pre-wrap text-sm text-gray-700">
                           {app.coverLetter}
@@ -513,7 +589,7 @@ function ApplicationHistory() {
                 onClick={() => setSelectedApp(null)}
                 className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
               >
-                关闭
+                {t('close')}
               </button>
             </div>
           </div>

@@ -3,6 +3,7 @@ import { getPrompts as getResumePrompts, getPromptById as getResumePromptById } 
 import { getPrompts as getCoverLetterPrompts, getPromptById as getCoverLetterPromptById } from '../utils/promptStorage'
 import ResumePromptManager from './ResumePromptManager'
 import PromptManager from './PromptManager'
+import { useI18n } from '../contexts/I18nContext'
 
 function ResumeUpload({
   onUpload,
@@ -17,6 +18,7 @@ function ResumeUpload({
   const [text, setText] = useState(existingResume)
   const [showResumePromptManager, setShowResumePromptManager] = useState(false)
   const [showCoverLetterPromptManager, setShowCoverLetterPromptManager] = useState(false)
+  const { t } = useI18n()
   const resumePrompts = getResumePrompts()
   const coverLetterPrompts = getCoverLetterPrompts()
   const selectedResumePrompt = getResumePromptById(selectedResumePromptId) || resumePrompts[0]
@@ -38,7 +40,7 @@ function ResumeUpload({
 
   const handleUpload = async () => {
     if (!file) {
-      alert('请先选择文件')
+      alert(t('selectFileFirst'))
       return
     }
 
@@ -71,7 +73,7 @@ function ResumeUpload({
       const contentType = response.headers.get('content-type')
       if (!contentType || !contentType.includes('application/json')) {
         const text = await response.text()
-        throw new Error('服务器返回了非 JSON 响应: ' + text.substring(0, 100))
+        throw new Error(t('serverNotJson') + ': ' + text.substring(0, 100))
       }
 
       const data = await response.json()
@@ -81,14 +83,14 @@ function ResumeUpload({
       }
 
       if (!data.text || data.text.trim().length === 0) {
-        throw new Error('文件解析后内容为空，请检查文件格式')
+        throw new Error(t('fileEmpty'))
       }
 
       setText(data.text)
       onUpload(data.text)
     } catch (error) {
       console.error('上传错误详情:', error)
-      alert('上传失败: ' + error.message)
+      alert(t('uploadFailed') + ': ' + error.message)
     } finally {
       setUploading(false)
     }
@@ -98,29 +100,28 @@ function ResumeUpload({
     if (text.trim()) {
       onUpload(text)
     } else {
-      alert('请输入简历内容')
+      alert(t('enterResumeContent'))
     }
   }
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">上传简历</h2>
+        <h2 className="text-2xl font-bold text-gray-800 mb-4">{t('uploadTitle')}</h2>
         <p className="text-gray-600 mb-6">
-          支持上传 PDF 或 Word 文档，或直接粘贴简历文本
+          {t('uploadHint')}
         </p>
 
-        {/* 首页选择：简历优化 + 推荐信 提示词 */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-gray-700">简历优化提示词</label>
+              <label className="block text-sm font-medium text-gray-700">{t('resumePromptLabel')}</label>
               <button
                 type="button"
                 onClick={() => setShowResumePromptManager(true)}
                 className="px-3 py-1 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700"
               >
-                管理
+                {t('manage')}
               </button>
             </div>
             <select
@@ -138,13 +139,13 @@ function ResumeUpload({
           </div>
           <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-gray-700">推荐信提示词</label>
+              <label className="block text-sm font-medium text-gray-700">{t('coverLetterPromptLabel')}</label>
               <button
                 type="button"
                 onClick={() => setShowCoverLetterPromptManager(true)}
                 className="px-3 py-1 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700"
               >
-                管理
+                {t('manage')}
               </button>
             </div>
             <select
@@ -165,7 +166,7 @@ function ResumeUpload({
         {existingResume && (
           <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
             <p className="text-sm text-green-800">
-              ✓ 简历已上传，您可以重新上传或修改下方内容
+              {t('resumeUploadedHint')}
             </p>
           </div>
         )}
@@ -198,7 +199,7 @@ function ResumeUpload({
             />
           </svg>
           <span className="text-gray-600 font-medium">
-            {file ? file.name : '点击选择文件 (PDF/Word)'}
+            {file ? file.name : t('clickSelectFile')}
           </span>
         </label>
         {file && (
@@ -207,7 +208,7 @@ function ResumeUpload({
             disabled={uploading}
             className="mt-4 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
           >
-            {uploading ? '上传中...' : '上传文件'}
+            {uploading ? t('uploading') : t('uploadFile')}
           </button>
         )}
       </div>
@@ -215,26 +216,26 @@ function ResumeUpload({
       {/* Divider */}
       <div className="flex items-center">
         <div className="flex-1 border-t border-gray-300"></div>
-        <span className="px-4 text-gray-500">或</span>
+        <span className="px-4 text-gray-500">{t('or')}</span>
         <div className="flex-1 border-t border-gray-300"></div>
       </div>
 
       {/* Text Input */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          直接粘贴简历内容
+          {t('pasteResumeLabel')}
         </label>
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="请粘贴您的简历内容..."
+          placeholder={t('pasteResumePlaceholder')}
           className="w-full h-64 p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
         />
         <button
           onClick={handleTextSubmit}
           className="mt-4 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
         >
-          确认使用
+          {t('confirmUse')}
         </button>
       </div>
 

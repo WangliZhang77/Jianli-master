@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { getPrompts, savePrompt, deletePrompt } from '../utils/resumePromptStorage'
+import { useI18n } from '../contexts/I18nContext'
 
 function ResumePromptManager({ selectedPromptId, onSelectPrompt, onClose }) {
+  const { t } = useI18n()
   const [prompts, setPrompts] = useState([])
   const [editingPrompt, setEditingPrompt] = useState(null)
   const [showAddForm, setShowAddForm] = useState(false)
@@ -21,7 +23,7 @@ function ResumePromptManager({ selectedPromptId, onSelectPrompt, onClose }) {
 
   const handleSave = () => {
     if (!formData.name.trim() || !formData.prompt.trim()) {
-      alert('请填写模板名称和提示词内容')
+      alert(t('fillPromptNameAndContent'))
       return
     }
 
@@ -40,12 +42,12 @@ function ResumePromptManager({ selectedPromptId, onSelectPrompt, onClose }) {
         systemPrompt: '你是一位专业的简历优化专家，擅长根据岗位要求优化简历内容。'
       })
     } catch (error) {
-      alert('保存失败: ' + error.message)
+      alert(t('saveFailedShort') + ': ' + error.message)
     }
   }
 
   const handleDelete = (id) => {
-    if (!confirm('确定要删除这个模板吗？')) {
+    if (!confirm(t('confirmDeleteTemplate'))) {
       return
     }
 
@@ -56,7 +58,7 @@ function ResumePromptManager({ selectedPromptId, onSelectPrompt, onClose }) {
         onSelectPrompt('default')
       }
     } catch (error) {
-      alert('删除失败: ' + error.message)
+      alert(t('deleteFailedShort') + ': ' + error.message)
     }
   }
 
@@ -75,7 +77,7 @@ function ResumePromptManager({ selectedPromptId, onSelectPrompt, onClose }) {
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-4 flex justify-between items-center">
-          <h2 className="text-xl font-bold">简历优化提示词模板管理</h2>
+          <h2 className="text-xl font-bold">{t('resumePromptManageTitle')}</h2>
           <button
             onClick={onClose}
             className="text-white hover:text-gray-200 text-2xl"
@@ -90,47 +92,47 @@ function ResumePromptManager({ selectedPromptId, onSelectPrompt, onClose }) {
           {showAddForm && (
             <div className="mb-6 p-4 border border-purple-200 rounded-lg bg-purple-50">
               <h3 className="font-bold text-gray-800 mb-4">
-                {editingPrompt ? '编辑模板' : '新建模板'}
+                {editingPrompt ? t('editTemplate') : t('newTemplate')}
               </h3>
               
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    模板名称
+                    {t('templateName')}
                   </label>
                   <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="例如：技术岗位优化模板"
+                    placeholder={t('promptNamePlaceholder')}
                     className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    系统提示词（可选）
+                    {t('systemPromptOptional')}
                   </label>
                   <input
                     type="text"
                     value={formData.systemPrompt}
                     onChange={(e) => setFormData({ ...formData, systemPrompt: e.target.value })}
-                    placeholder="系统角色描述"
+                    placeholder={t('systemRolePlaceholder')}
                     className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    提示词内容
+                    {t('promptContentLabel')}
                     <span className="text-xs text-gray-500 ml-2">
-                      （可用占位符：{'{jobDescription}'}、{'{resume}'}、{'{targetIndustry}'}、{'{targetPosition}'}）
+                      （{'{jobDescription}'}、{'{resume}'}、{'{targetIndustry}'}、{'{targetPosition}'}）
                     </span>
                   </label>
                   <textarea
                     value={formData.prompt}
                     onChange={(e) => setFormData({ ...formData, prompt: e.target.value })}
-                    placeholder="请输入提示词..."
+                    placeholder={t('promptContentPlaceholder')}
                     rows="10"
                     className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 resize-none"
                   />
@@ -141,7 +143,7 @@ function ResumePromptManager({ selectedPromptId, onSelectPrompt, onClose }) {
                     onClick={handleSave}
                     className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
                   >
-                    保存
+                    {t('save')}
                   </button>
                   <button
                     onClick={() => {
@@ -155,7 +157,7 @@ function ResumePromptManager({ selectedPromptId, onSelectPrompt, onClose }) {
                     }}
                     className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
                   >
-                    取消
+                    {t('cancel')}
                   </button>
                 </div>
               </div>
@@ -165,7 +167,7 @@ function ResumePromptManager({ selectedPromptId, onSelectPrompt, onClose }) {
           {/* Template List */}
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <h3 className="font-bold text-gray-800">已保存的模板</h3>
+              <h3 className="font-bold text-gray-800">{t('savedTemplates')}</h3>
               {!showAddForm && (
                 <button
                   onClick={() => {
@@ -174,7 +176,7 @@ function ResumePromptManager({ selectedPromptId, onSelectPrompt, onClose }) {
                   }}
                   className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm"
                 >
-                  + 新建模板
+                  {t('addNewTemplate')}
                 </button>
               )}
             </div>
@@ -207,7 +209,7 @@ function ResumePromptManager({ selectedPromptId, onSelectPrompt, onClose }) {
                       onClick={() => onSelectPrompt(prompt.id)}
                       className="px-3 py-1 text-sm bg-purple-600 text-white rounded hover:bg-purple-700"
                     >
-                      使用
+                      {t('useTemplate')}
                     </button>
                     {prompt.id !== 'default' && (
                       <>
@@ -215,13 +217,13 @@ function ResumePromptManager({ selectedPromptId, onSelectPrompt, onClose }) {
                           onClick={() => handleEdit(prompt)}
                           className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
                         >
-                          编辑
+                          {t('edit')}
                         </button>
                         <button
                           onClick={() => handleDelete(prompt.id)}
                           className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600"
                         >
-                          删除
+                          {t('delete')}
                         </button>
                       </>
                     )}

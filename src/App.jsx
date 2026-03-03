@@ -9,9 +9,16 @@ import { parseJobDescription } from './utils/jobDescriptionParser'
 import { extractIndustryAndPosition } from './utils/jobInfoExtractor'
 import { getApiKey, setApiKey } from './utils/apiKeyStorage'
 import { useI18n } from './contexts/I18nContext'
+import { useAuth } from './contexts/AuthContext'
+import Auth from './components/Auth'
 
 function App() {
+  const { token, user, login, register, logout } = useAuth()
   const { locale, setLocale, t } = useI18n()
+
+  if (!token) {
+    return <Auth onLogin={login} onRegister={register} />
+  }
   const [resumeText, setResumeText] = useState('')
   const [jobDescription, setJobDescription] = useState('')
   const [optimizedResume, setOptimizedResume] = useState('')
@@ -46,11 +53,11 @@ function App() {
   // 一键流程：岗位描述和简历只发一次，一次得到 职位信息 + 优化简历 + 推荐信
   const handleFullFlow = async () => {
     if (!openaiApiKey.trim()) {
-      alert('请先在右上角「设置 API Key」中输入 OpenAI API 密钥')
+      alert(t('setApiKeyFirst'))
       return
     }
     if (!resumeText || !jobDescription) {
-      alert('请先上传简历和输入岗位描述')
+      alert(t('uploadResumeFirst'))
       return
     }
 
@@ -65,8 +72,8 @@ function App() {
       resumeInstruction = resumeInstruction
         .replace(/{jobDescription}/g, jobDescription)
         .replace(/{resume}/g, resumeText)
-        .replace(/{targetIndustry}/g, industry || '互联网')
-        .replace(/{targetPosition}/g, posForPlaceholder || '工程师')
+        .replace(/{targetIndustry}/g, industry || t('defaultIndustry'))
+        .replace(/{targetPosition}/g, posForPlaceholder || t('defaultPosition'))
 
       let coverLetterInstruction = coverLetterTemplate?.prompt || ''
       coverLetterInstruction = coverLetterInstruction
@@ -97,7 +104,7 @@ function App() {
       // 一键流程完成后先查看优化简历，再到推荐信
       setActiveTab('resume')
     } catch (error) {
-      alert('一键生成失败: ' + error.message)
+      alert(t('oneClickFailed') + ': ' + error.message)
     } finally {
       setLoading(false)
     }
@@ -105,11 +112,11 @@ function App() {
 
   const handleOptimizeResume = async () => {
     if (!openaiApiKey.trim()) {
-      alert('请先在右上角「设置 API Key」中输入 OpenAI API 密钥')
+      alert(t('setApiKeyFirst'))
       return
     }
     if (!resumeText || !jobDescription) {
-      alert('请先上传简历和输入岗位描述')
+      alert(t('uploadResumeFirst'))
       return
     }
 
@@ -122,8 +129,8 @@ function App() {
       processedPrompt = processedPrompt
         .replace(/{jobDescription}/g, jobDescription)
         .replace(/{resume}/g, resumeText)
-        .replace(/{targetIndustry}/g, industry || '互联网')
-        .replace(/{targetPosition}/g, position || '工程师')
+        .replace(/{targetIndustry}/g, industry || t('defaultIndustry'))
+        .replace(/{targetPosition}/g, position || t('defaultPosition'))
 
       const response = await fetch('/api/optimize-resume', {
         method: 'POST',
@@ -142,7 +149,7 @@ function App() {
       setOptimizedResume(data.optimizedResume)
       setActiveTab('resume')
     } catch (error) {
-      alert('优化简历失败: ' + error.message)
+      alert(t('optimizeFailed') + ': ' + error.message)
     } finally {
       setLoading(false)
     }
@@ -150,11 +157,11 @@ function App() {
 
   const handleGenerateCoverLetter = async () => {
     if (!openaiApiKey.trim()) {
-      alert('请先在右上角「设置 API Key」中输入 OpenAI API 密钥')
+      alert(t('setApiKeyFirst'))
       return
     }
     if (!optimizedResume || !jobDescription) {
-      alert('请先优化简历')
+      alert(t('optimizeResumeFirst'))
       return
     }
 
@@ -182,7 +189,7 @@ function App() {
       setCoverLetter(data.coverLetter)
       setActiveTab('coverLetter')
     } catch (error) {
-      alert('生成推荐信失败: ' + error.message)
+      alert(t('coverLetterFailed') + ': ' + error.message)
     } finally {
       setLoading(false)
     }
@@ -221,13 +228,21 @@ function App() {
                 <h1 className="text-3xl font-bold mb-2">{t('appTitle')}</h1>
                 <p className="text-purple-100">{t('appSubtitle')}</p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-white/90 text-sm mr-2">{user?.email}</span>
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-sm"
+                >
+                  {t('logout')}
+                </button>
                 <button
                   type="button"
                   onClick={() => setLocale(locale === 'zh' ? 'en' : 'zh')}
                   className="px-3 py-1.5 rounded-lg bg-white bg-opacity-20 hover:bg-opacity-30 text-sm font-medium"
                 >
-                  {locale === 'zh' ? 'EN' : '中文'}
+                  {locale === 'zh' ? t('switchEn') : t('switchZh')}
                 </button>
                 <button
                   onClick={() => {

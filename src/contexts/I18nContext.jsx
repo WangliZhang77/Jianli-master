@@ -14,7 +14,15 @@ export function I18nProvider({ children }) {
     if (lang === 'zh' || lang === 'en') setLocaleState(lang)
   }
 
-  const t = (key) => tRaw(locale, key)
+  const t = (key, vars) => {
+    let s = tRaw(locale, key)
+    if (vars && typeof vars === 'object') {
+      Object.keys(vars).forEach((k) => {
+        s = s.replace(new RegExp('\\{' + k + '\\}', 'g'), String(vars[k]))
+      })
+    }
+    return s
+  }
 
   return (
     <I18nContext.Provider value={{ locale, setLocale, t }}>
