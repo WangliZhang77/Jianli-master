@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { saveApplication } from '../utils/applicationStorage'
 import { parseJobDescription } from '../utils/jobDescriptionParser'
+import toast from 'react-hot-toast'
 import { useAuth } from '../contexts/AuthContext'
 import { useI18n } from '../contexts/I18nContext'
 
@@ -14,7 +15,7 @@ function ApplicationRecord({
   onCancel,
   openaiApiKey = '',
 }) {
-  const { token } = useAuth()
+  const { token, fetchWithAuth } = useAuth()
   const { t } = useI18n()
   const [formData, setFormData] = useState({
     companyName: companyName || '',
@@ -76,7 +77,7 @@ function ApplicationRecord({
 
   const handleSave = async () => {
     if (!formData.companyName.trim() || !formData.position.trim()) {
-      alert(t('fillCompanyPosition'))
+      toast.error(t('fillCompanyPosition'))
       return
     }
 
@@ -90,22 +91,19 @@ function ApplicationRecord({
 
     try {
       if (token) {
-        const res = await fetch('/api/applications', {
+        const res = await fetchWithAuth('/api/applications', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         })
         if (!res.ok) throw new Error(t('saveFailed'))
       } else {
         saveApplication(payload)
       }
-      alert(t('recordSaved'))
+      toast.success(t('recordSaved'))
       onRecorded()
     } catch (error) {
-      alert(t('saveFailed') + ': ' + error.message)
+      toast.error(error.message === 'Unauthorized' ? t('sessionExpired') : t('saveFailed') + ': ' + error.message)
     }
   }
 

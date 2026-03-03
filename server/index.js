@@ -43,7 +43,8 @@ import { generateCoverLetter } from './services/coverLetterService.js'
 import { parseResumeFile } from './utils/fileParser.js'
 import { extractJobInfo } from './services/jobInfoExtractor.js'
 import { runFullFlow } from './services/fullFlowService.js'
-import './db.js'
+import db from './db.js'
+import rateLimit from 'express-rate-limit'
 import authRoutes from './routes/auth.js'
 import applicationsRoutes from './routes/applications.js'
 
@@ -101,12 +102,23 @@ const upload = multer({
   }
 })
 
-// 健康检查端点
+// Health check (optional DB ping)
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: '服务器运行正常' })
+  try {
+    db.prepare('SELECT 1').get()
+    res.json({ status: 'ok', message: '服务器运行正常', db: 'ok' })
+  } catch (e) {
+    res.status(503).json({ status: 'error', message: 'DB check failed', db: 'error' })
+  }
 })
 
-app.use('/api/auth', authRoutes)
+// Rate limit for auth (login/register)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { error: 'Too many attempts, please try again later' },
+})
+app.use('/api/auth', authLimiter, authRoutes)
 app.use('/api/applications', applicationsRoutes)
 
 // Routes

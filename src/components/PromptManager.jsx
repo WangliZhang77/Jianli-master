@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getPrompts, savePrompt, deletePrompt } from '../utils/promptStorage'
+import toast from 'react-hot-toast'
 import { useI18n } from '../contexts/I18nContext'
 
 function PromptManager({ selectedPromptId, onSelectPrompt, onClose }) {
@@ -13,17 +14,17 @@ function PromptManager({ selectedPromptId, onSelectPrompt, onClose }) {
     systemPrompt: '你是一位专业的求职信撰写专家，擅长根据简历和岗位要求撰写有说服力的推荐信。'
   })
 
-  useEffect(() => {
-    loadPrompts()
-  }, [])
-
   const loadPrompts = () => {
     setPrompts(getPrompts())
   }
 
+  useEffect(() => {
+    loadPrompts()
+  }, [])
+
   const handleSave = () => {
     if (!formData.name.trim() || !formData.prompt.trim()) {
-      alert(t('fillPromptNameAndContent'))
+      toast.error(t('fillPromptNameAndContent'))
       return
     }
 
@@ -42,7 +43,7 @@ function PromptManager({ selectedPromptId, onSelectPrompt, onClose }) {
         systemPrompt: '你是一位专业的求职信撰写专家，擅长根据简历和岗位要求撰写有说服力的推荐信。'
       })
     } catch (error) {
-      alert(t('saveFailedShort') + ': ' + error.message)
+      toast.error(t('saveFailedShort') + ': ' + error.message)
     }
   }
 
@@ -58,7 +59,7 @@ function PromptManager({ selectedPromptId, onSelectPrompt, onClose }) {
         onSelectPrompt('default')
       }
     } catch (error) {
-      alert(t('deleteFailedShort') + ': ' + error.message)
+      toast.error(t('deleteFailedShort') + ': ' + error.message)
     }
   }
 

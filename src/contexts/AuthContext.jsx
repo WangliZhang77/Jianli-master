@@ -1,9 +1,17 @@
 import { createContext, useContext, useState, useEffect } from 'react'
+import { getApiBase } from '../utils/api.js'
 
 const TOKEN_KEY = 'auth_token'
 const USER_KEY = 'auth_user'
 
-const AuthContext = createContext({ token: null, user: null, login: async () => {}, register: async () => {}, logout: () => {} })
+const AuthContext = createContext({
+  token: null,
+  user: null,
+  login: async () => {},
+  register: async () => {},
+  logout: () => {},
+  fetchWithAuth: async () => {},
+})
 
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY))
@@ -11,7 +19,7 @@ export function AuthProvider({ children }) {
     try {
       const u = localStorage.getItem(USER_KEY)
       return u ? JSON.parse(u) : null
-    } catch (e) {
+    } catch (_e) {
       return null
     }
   })
@@ -27,7 +35,7 @@ export function AuthProvider({ children }) {
   }, [token])
 
   const login = async (email, password) => {
-    const res = await fetch('/api/auth/login', {
+    const res = await fetch(getApiBase() + '/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
@@ -41,7 +49,7 @@ export function AuthProvider({ children }) {
   }
 
   const register = async (email, password) => {
-    const res = await fetch('/api/auth/register', {
+    const res = await fetch(getApiBase() + '/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
@@ -59,8 +67,24 @@ export function AuthProvider({ children }) {
     setUser(null)
   }
 
+  const fetchWithAuth = async (url, options = {}) => {
+    const base = getApiBase()
+    const res = await fetch(base + url, {
+      ...options,
+      headers: {
+        ...options.headers,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    })
+    if (res.status === 401) {
+      logout()
+      throw new Error('Unauthorized')
+    }
+    return res
+  }
+
   return (
-    <AuthContext.Provider value={{ token, user, login, register, logout }}>
+    <AuthContext.Provider value={{ token, user, login, register, logout, fetchWithAuth }}>
       {children}
     </AuthContext.Provider>
   )

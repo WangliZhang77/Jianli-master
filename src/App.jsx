@@ -8,6 +8,7 @@ import { getPromptById } from './utils/promptStorage'
 import { parseJobDescription } from './utils/jobDescriptionParser'
 import { extractIndustryAndPosition } from './utils/jobInfoExtractor'
 import { getApiKey, setApiKey } from './utils/apiKeyStorage'
+import toast from 'react-hot-toast'
 import { useI18n } from './contexts/I18nContext'
 import { useAuth } from './contexts/AuthContext'
 import Auth from './components/Auth'
@@ -15,10 +16,6 @@ import Auth from './components/Auth'
 function App() {
   const { token, user, login, register, logout } = useAuth()
   const { locale, setLocale, t } = useI18n()
-
-  if (!token) {
-    return <Auth onLogin={login} onRegister={register} />
-  }
   const [resumeText, setResumeText] = useState('')
   const [jobDescription, setJobDescription] = useState('')
   const [optimizedResume, setOptimizedResume] = useState('')
@@ -33,7 +30,6 @@ function App() {
   const [showApiKeyModal, setShowApiKeyModal] = useState(false)
   const [apiKeyInput, setApiKeyInput] = useState('')
 
-  // 从 localStorage 加载
   useEffect(() => {
     const savedCoverLetter = localStorage.getItem('selectedCoverLetterPromptId')
     if (savedCoverLetter) setSelectedCoverLetterPromptId(savedCoverLetter)
@@ -44,6 +40,10 @@ function App() {
     setOpenaiApiKey(getApiKey())
   }, [])
 
+  if (!token) {
+    return <Auth onLogin={login} onRegister={register} />
+  }
+
   const handleResumeUpload = (text) => {
     setResumeText(text)
     localStorage.setItem('resumeText', text)
@@ -53,11 +53,11 @@ function App() {
   // 一键流程：岗位描述和简历只发一次，一次得到 职位信息 + 优化简历 + 推荐信
   const handleFullFlow = async () => {
     if (!openaiApiKey.trim()) {
-      alert(t('setApiKeyFirst'))
+      toast.error(t('setApiKeyFirst'))
       return
     }
     if (!resumeText || !jobDescription) {
-      alert(t('uploadResumeFirst'))
+      toast.error(t('uploadResumeFirst'))
       return
     }
 
@@ -104,7 +104,7 @@ function App() {
       // 一键流程完成后先查看优化简历，再到推荐信
       setActiveTab('resume')
     } catch (error) {
-      alert(t('oneClickFailed') + ': ' + error.message)
+      toast.error(t('oneClickFailed') + ': ' + error.message)
     } finally {
       setLoading(false)
     }
@@ -112,11 +112,11 @@ function App() {
 
   const handleOptimizeResume = async () => {
     if (!openaiApiKey.trim()) {
-      alert(t('setApiKeyFirst'))
+      toast.error(t('setApiKeyFirst'))
       return
     }
     if (!resumeText || !jobDescription) {
-      alert(t('uploadResumeFirst'))
+      toast.error(t('uploadResumeFirst'))
       return
     }
 
@@ -157,11 +157,11 @@ function App() {
 
   const handleGenerateCoverLetter = async () => {
     if (!openaiApiKey.trim()) {
-      alert(t('setApiKeyFirst'))
+      toast.error(t('setApiKeyFirst'))
       return
     }
     if (!optimizedResume || !jobDescription) {
-      alert(t('optimizeResumeFirst'))
+      toast.error(t('optimizeResumeFirst'))
       return
     }
 
@@ -289,7 +289,7 @@ function App() {
                       setApiKey(v)
                       setOpenaiApiKey(v)
                       setShowApiKeyModal(false)
-                      if (v) alert(t('apiKeySaved'))
+                      if (v) toast.success(t('apiKeySaved'))
                     }}
                     className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
                   >

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { getPrompts, getPromptById } from '../utils/promptStorage'
 import PromptManager from './PromptManager'
+import toast from 'react-hot-toast'
 import { useI18n } from '../contexts/I18nContext'
 
 function OptimizedResume({
@@ -17,7 +18,7 @@ function OptimizedResume({
 
   const handleCopy = (text) => {
     navigator.clipboard.writeText(text)
-    alert(t('copied'))
+    toast.success(t('copied'))
   }
 
   return (

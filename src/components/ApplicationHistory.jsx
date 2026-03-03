@@ -9,11 +9,12 @@ import {
   exportToCSV,
   exportToJSON 
 } from '../utils/applicationStorage'
+import toast from 'react-hot-toast'
 import { useAuth } from '../contexts/AuthContext'
 import { useI18n } from '../contexts/I18nContext'
 
 function ApplicationHistory() {
-  const { token } = useAuth()
+  const { token, fetchWithAuth } = useAuth()
   const { locale, t } = useI18n()
   const dateLocale = locale === 'en' ? 'en-US' : 'zh-CN'
   const weekDays = [t('weekDay0'), t('weekDay1'), t('weekDay2'), t('weekDay3'), t('weekDay4'), t('weekDay5'), t('weekDay6')]
@@ -30,12 +31,12 @@ function ApplicationHistory() {
   const loadApplications = useCallback(async () => {
     if (token) {
       try {
-        const res = await fetch('/api/applications', { headers: { Authorization: `Bearer ${token}` } })
+        const res = await fetchWithAuth('/api/applications')
         if (!res.ok) throw new Error(t('loadFailed'))
         const data = await res.json()
         setApplications(data)
       } catch (e) {
-        alert(t('loadFailed') + ': ' + (e.message || e))
+        toast.error(e.message === 'Unauthorized' ? t('sessionExpired') : t('loadFailed') + ': ' + (e.message || e))
         setApplications([])
       }
     } else {
@@ -54,7 +55,7 @@ function ApplicationHistory() {
 
     try {
       if (token) {
-        const res = await fetch(`/api/applications/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+        const res = await fetchWithAuth(`/api/applications/${id}`, { method: 'DELETE' })
         if (!res.ok) throw new Error(t('deleteFailed'))
       } else {
         deleteApplication(id)
@@ -64,7 +65,7 @@ function ApplicationHistory() {
         setSelectedApp(null)
       }
     } catch (error) {
-      alert(t('deleteFailed') + ': ' + error.message)
+      toast.error(error.message === 'Unauthorized' ? t('sessionExpired') : t('deleteFailed') + ': ' + error.message)
     }
   }
 
@@ -80,9 +81,9 @@ function ApplicationHistory() {
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
-      alert(t('exportSuccess'))
+      toast.success(t('exportSuccess'))
     } catch (error) {
-      alert(t('exportFailed') + ': ' + error.message)
+      toast.error(t('exportFailed') + ': ' + error.message)
     }
   }
 
@@ -98,26 +99,23 @@ function ApplicationHistory() {
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
-      alert(t('exportSuccess'))
+      toast.success(t('exportSuccess'))
     } catch (error) {
-      alert(t('exportFailed') + ': ' + error.message)
+      toast.error(t('exportFailed') + ': ' + error.message)
     }
   }
 
   const handleImportLocal = async () => {
     const local = getApplications()
     if (local.length === 0) {
-      alert(t('noLocalRecordsToImport'))
+      toast.error(t('noLocalRecordsToImport'))
       return
     }
     setImporting(true)
     try {
-      const res = await fetch('/api/applications/import', {
+      const res = await fetchWithAuth('/api/applications/import', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           applications: local.map((app) => ({
             date: app.date,
@@ -132,13 +130,13 @@ function ApplicationHistory() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || t('loadFailed'))
       const imported = data.imported ?? local.length
-      alert(t('importSuccess', { n: imported }))
+      toast.success(t('importSuccess', { n: imported }))
       await loadApplications()
       if (confirm(t('importSuccessClear'))) {
         clearLocalApplications()
       }
     } catch (e) {
-      alert(t('importFailed') + (e.message || e))
+      toast.error(e.message === 'Unauthorized' ? t('sessionExpired') : t('importFailed') + (e.message || e))
     } finally {
       setImporting(false)
     }
@@ -537,7 +535,7 @@ function ApplicationHistory() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {selectedApp.applications.map((app, index) => (
+              {selectedApp.applications.map((app) => (
                 <div key={app.id} className="border-b border-gray-200 pb-6 last:border-0">
                   <div className="mb-4">
                     <h3 className="text-lg font-semibold text-gray-800 mb-2">

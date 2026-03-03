@@ -20,6 +20,7 @@
    - 点击 **New Project** → **Deploy from GitHub repo**，选择你的仓库。  
    - 若提示配置，在项目里点 **Variables**，添加环境变量：
      - `OPENAI_API_KEY` = 你的 OpenAI API 密钥  
+     - `JWT_SECRET` = 一串随机密钥（建议 32 位以上，用于登录 token 签名，**生产必填**）
      - `NODE_ENV` = `production`
    - Railway 会自动检测 Node 项目并执行 `npm install`。  
    - 在 **Settings** 里设置：
@@ -54,6 +55,7 @@
 4. **环境变量**  
    - 在 **Environment** 里添加：
      - `OPENAI_API_KEY` = 你的 API 密钥  
+     - `JWT_SECRET` = 一串随机密钥（建议 32 位以上，**生产必填**）
      - `NODE_ENV` = `production`
 
 5. **部署**  
@@ -67,8 +69,8 @@
 
 若希望前端用 Vercel、后端用 Railway/Render：
 
-- **后端**：在 Railway 或 Render 上只跑 Node 服务（同上，Start Command 用 `npm start`，并设置 `OPENAI_API_KEY`），得到后端地址，例如 `https://xxx.railway.app`。  
-- **前端**：在 Vite 里配置生产环境 API 地址（例如 `vite.config.js` 里用 `define` 或环境变量），然后部署到 Vercel。  
+- **后端**：在 Railway 或 Render 上只跑 Node 服务（同上，Start Command 用 `npm start`，并设置 `OPENAI_API_KEY`、`JWT_SECRET`），得到后端地址，例如 `https://xxx.railway.app`。  
+- **前端**：在项目根目录创建 `.env.production`（或部署平台环境变量）中设置 `VITE_API_BASE_URL=https://xxx.railway.app`，前端请求会使用该地址作为 API 根路径（见 `src/utils/api.js`）。然后部署到 Vercel。  
 
 不推荐新手用此方式，除非你已熟悉前后端分离部署。
 
@@ -96,6 +98,7 @@ $env:NODE_ENV="production"; node server/index.js
 | 变量名 | 必填 | 说明 |
 |--------|------|------|
 | `OPENAI_API_KEY` | 是 | OpenAI API 密钥 |
+| `JWT_SECRET` | **生产必填** | 登录 token 签名密钥，建议 32 位以上随机字符串；未设置时控制台会警告 |
 | `NODE_ENV` | 生产建议 | 设为 `production`，服务会托管前端并启用生产行为 |
 | `PORT` | 否 | 服务端口，云平台一般自动注入，可不设 |
 | `OPENAI_MODEL` | 否 | 简历/推荐信使用的模型，默认 `gpt-4o-mini`（省 token），可改为 `gpt-4` |
@@ -103,6 +106,8 @@ $env:NODE_ENV="production"; node server/index.js
 | `MAX_RESUME_CHARS` | 否 | 简历最大字符数（截断以省 token），默认 4000 |
 | `MAX_JD_CHARS` | 否 | 岗位描述最大字符数，默认 2000 |
 | `MAX_RESUME_FOR_COVER_LETTER_CHARS` | 否 | 生成推荐信时传入的简历最大字符数，默认 3000 |
+
+项目根目录提供 `.env.example`，复制为 `.env` 后按需填写；生产环境务必设置 `JWT_SECRET`。
 
 ---
 

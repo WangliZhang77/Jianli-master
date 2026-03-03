@@ -3,6 +3,7 @@ import { getPrompts as getResumePrompts, getPromptById as getResumePromptById } 
 import { getPrompts as getCoverLetterPrompts, getPromptById as getCoverLetterPromptById } from '../utils/promptStorage'
 import ResumePromptManager from './ResumePromptManager'
 import PromptManager from './PromptManager'
+import toast from 'react-hot-toast'
 import { useI18n } from '../contexts/I18nContext'
 
 function ResumeUpload({
@@ -40,7 +41,7 @@ function ResumeUpload({
 
   const handleUpload = async () => {
     if (!file) {
-      alert(t('selectFileFirst'))
+      toast.error(t('selectFileFirst'))
       return
     }
 
@@ -90,7 +91,7 @@ function ResumeUpload({
       onUpload(data.text)
     } catch (error) {
       console.error('上传错误详情:', error)
-      alert(t('uploadFailed') + ': ' + error.message)
+      toast.error(t('uploadFailed') + ': ' + error.message)
     } finally {
       setUploading(false)
     }
@@ -100,7 +101,7 @@ function ResumeUpload({
     if (text.trim()) {
       onUpload(text)
     } else {
-      alert(t('enterResumeContent'))
+      toast.error(t('enterResumeContent'))
     }
   }
 

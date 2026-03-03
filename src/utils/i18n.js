@@ -180,6 +180,7 @@ const messages = {
     authRequestFailed: '请求失败',
     authMinChars: '至少 6 个字符',
     authLoading: '处理中...',
+    sessionExpired: '登录已过期，请重新登录',
   },
   en: {
     appTitle: 'Resume Master',
@@ -360,6 +361,7 @@ const messages = {
     authRequestFailed: 'Request failed',
     authMinChars: 'At least 6 characters',
     authLoading: 'Loading...',
+    sessionExpired: 'Session expired. Please log in again.',
   },
 }
 
@@ -367,14 +369,14 @@ export function getLocale() {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored === 'en' || stored === 'zh') return stored
-  } catch (e) {}
+  } catch (_e) {}
   return 'zh'
 }
 
 export function setLocale(lang) {
   try {
     if (lang === 'en' || lang === 'zh') localStorage.setItem(STORAGE_KEY, lang)
-  } catch (e) {}
+  } catch (_e) {}
 }
 
 export function t(locale, key) {

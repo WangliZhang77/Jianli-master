@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import ApplicationRecord from './ApplicationRecord'
 import { exportCoverLetterToDocxFormatted } from '../utils/docxExporter'
+import toast from 'react-hot-toast'
 import { useI18n } from '../contexts/I18nContext'
 
 function CoverLetter({
@@ -18,7 +19,7 @@ function CoverLetter({
 
   const handleCopy = () => {
     navigator.clipboard.writeText(coverLetter)
-    alert(t('copied'))
+    toast.success(t('copied'))
   }
 
   const handleDownload = () => {
@@ -44,7 +45,7 @@ function CoverLetter({
       await exportCoverLetterToDocxFormatted(coverLetter, companyName, position)
       // 不显示alert，因为文件已经开始下载
     } catch (error) {
-      alert(t('exportFailed') + ': ' + error.message)
+      toast.error(t('exportFailed') + ': ' + error.message)
     } finally {
       setExporting(false)
     }
