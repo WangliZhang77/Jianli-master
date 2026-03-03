@@ -59,7 +59,8 @@ if (!fs.existsSync(uploadsDir)) {
 
 // Middleware
 app.use(cors())
-app.use(express.json())
+// 提高 JSON 请求体大小限制，避免导入大量投递记录时报 request entity too large
+app.use(express.json({ limit: '10mb' }))
 
 // Configure multer for file uploads
 const upload = multer({ 
