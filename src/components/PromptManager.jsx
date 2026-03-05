@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
-import { getPrompts, savePrompt, deletePrompt } from '../utils/promptStorage'
+import { getPrompts, savePrompt, deletePrompt, resetToDefaultPrompts } from '../utils/promptStorage'
 import AppleButton from './AppleButton'
 import toast from 'react-hot-toast'
 import { useI18n } from '../contexts/I18nContext'
 
-function PromptManager({ selectedPromptId, onSelectPrompt, onClose }) {
+function PromptManager({ selectedPromptId, onSelectPrompt, onClose, onAfterSave }) {
   const { t } = useI18n()
   const [prompts, setPrompts] = useState([])
   const [editingPrompt, setEditingPrompt] = useState(null)
@@ -43,6 +43,7 @@ function PromptManager({ selectedPromptId, onSelectPrompt, onClose }) {
         prompt: '',
         systemPrompt: '你是一位专业的求职信撰写专家，擅长根据简历和岗位要求撰写有说服力的推荐信。'
       })
+      onAfterSave?.(getPrompts())
     } catch (error) {
       toast.error(t('saveFailedShort') + ': ' + error.message)
     }
@@ -72,6 +73,18 @@ function PromptManager({ selectedPromptId, onSelectPrompt, onClose }) {
       systemPrompt: prompt.systemPrompt || '你是一位专业的求职信撰写专家，擅长根据简历和岗位要求撰写有说服力的推荐信。'
     })
     setShowAddForm(true)
+  }
+
+  const handleResetToDefault = () => {
+    if (!confirm(t('confirmResetPromptsToDefault'))) return
+    try {
+      resetToDefaultPrompts()
+      loadPrompts()
+      toast.success(t('resetPromptsSuccess'))
+      onAfterSave?.(getPrompts())
+    } catch (error) {
+      toast.error(t('saveFailedShort') + ': ' + error.message)
+    }
   }
 
   return (
@@ -109,7 +122,7 @@ function PromptManager({ selectedPromptId, onSelectPrompt, onClose }) {
                 <div>
                   <label className="block text-sm font-medium text-slate-200 mb-1">
                     {t('promptContentLabel')}
-                    <span className="text-xs text-slate-400 ml-2">({'{jobDescription}'}, {'{resume}'})</span>
+                    <span className="text-xs text-slate-400 ml-2">({'{jobDescription}'}, {'{resume}'}, {'{companyInfo}'})</span>
                   </label>
                   <textarea
                     value={formData.prompt}
@@ -127,10 +140,13 @@ function PromptManager({ selectedPromptId, onSelectPrompt, onClose }) {
             </div>
           )}
           <div className="space-y-3">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center flex-wrap gap-2">
               <h3 className="font-bold text-white">{t('savedTemplates')}</h3>
               {!showAddForm && (
-                <AppleButton onClick={() => { setShowAddForm(true); setEditingPrompt(null) }} className="!py-2 text-sm">{t('addNewTemplate')}</AppleButton>
+                <div className="flex gap-2">
+                  <AppleButton variant="secondary" onClick={handleResetToDefault} className="!py-2 text-sm">{t('resetPromptsToDefault')}</AppleButton>
+                  <AppleButton onClick={() => { setShowAddForm(true); setEditingPrompt(null) }} className="!py-2 text-sm">{t('addNewTemplate')}</AppleButton>
+                </div>
               )}
             </div>
             {prompts.map((prompt) => (

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import ResumeUpload from './components/ResumeUpload'
 import JobDescription from './components/JobDescription'
 import OptimizedResume from './components/OptimizedResume'
@@ -15,10 +15,11 @@ import toast from 'react-hot-toast'
 import { useI18n } from './contexts/I18nContext'
 import { useAuth } from './contexts/AuthContext'
 import Auth from './components/Auth'
+import OnboardingOverlay, { getOnboardingDone } from './components/OnboardingOverlay'
 import { Sparkles } from 'lucide-react'
 
 function App() {
-  const { token, user, login, register, logout } = useAuth()
+  const { token, user, login, register, logout, fetchWithAuth } = useAuth()
   const { locale, setLocale, t } = useI18n()
   const [resumeText, setResumeText] = useState('')
   const [jobDescription, setJobDescription] = useState('')
@@ -34,6 +35,38 @@ function App() {
   const [showApiKeyModal, setShowApiKeyModal] = useState(false)
   const [apiKeyInput, setApiKeyInput] = useState('')
   const [performanceMode, setPerformanceMode] = useState(true)
+  const [promptsSyncedAt, setPromptsSyncedAt] = useState(0)
+  const [onboardingDone, setOnboardingDone] = useState(() => getOnboardingDone())
+
+  useEffect(() => {
+    if (!token) return
+    fetchWithAuth('/api/prompts')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.resume && Array.isArray(data.resume) && data.resume.length > 0) {
+          localStorage.setItem('resumeOptimizationPrompts', JSON.stringify(data.resume))
+        }
+        if (data.coverLetter && Array.isArray(data.coverLetter) && data.coverLetter.length > 0) {
+          localStorage.setItem('coverLetterPrompts', JSON.stringify(data.coverLetter))
+        }
+        setPromptsSyncedAt((t) => t + 1)
+      })
+      .catch(() => {})
+  }, [token, fetchWithAuth])
+
+  const handleSyncPromptsToServer = useCallback(
+    async (kind, data) => {
+      if (!token || !Array.isArray(data)) return
+      try {
+        await fetchWithAuth('/api/prompts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ kind, data }),
+        })
+      } catch (_) {}
+    },
+    [token, fetchWithAuth]
+  )
 
   useEffect(() => {
     const savedCoverLetter = localStorage.getItem('selectedCoverLetterPromptId')
@@ -181,6 +214,7 @@ function App() {
       setPosition(parsed.position)
 
       const promptTemplate = getPromptById(selectedCoverLetterPromptId)
+      const companyInfoStr = [parsed.companyName, parsed.position].filter(Boolean).join(' | ') || ''
       const response = await fetch('/api/generate-cover-letter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -190,6 +224,7 @@ function App() {
           jobDescription,
           prompt: promptTemplate?.prompt,
           systemPrompt: promptTemplate?.systemPrompt,
+          companyInfo: companyInfoStr,
         }),
       })
 
@@ -348,6 +383,8 @@ function App() {
                     onResumePromptChange={handleResumePromptChange}
                     selectedCoverLetterPromptId={selectedCoverLetterPromptId}
                     onCoverLetterPromptChange={handleCoverLetterPromptChange}
+                    onSyncPromptsToServer={handleSyncPromptsToServer}
+                    promptsSyncedAt={promptsSyncedAt}
                   />
                 )}
 
@@ -368,9 +405,12 @@ function App() {
                   <OptimizedResume
                     originalResume={resumeText}
                     optimizedResume={optimizedResume}
+                    companyName={companyName}
+                    position={position}
                     onGenerateCoverLetter={handleGenerateCoverLetter}
                     selectedCoverLetterPromptId={selectedCoverLetterPromptId}
                     onCoverLetterPromptChange={handleCoverLetterPromptChange}
+                    onAfterSaveCoverLetterPrompts={handleSyncPromptsToServer ? (data) => handleSyncPromptsToServer('coverLetter', data) : undefined}
                   />
                 )}
 
@@ -392,6 +432,10 @@ function App() {
           </GlassCard>
         </div>
       </div>
+
+      {!onboardingDone && (
+        <OnboardingOverlay onClose={() => setOnboardingDone(true)} />
+      )}
     </div>
   )
 }

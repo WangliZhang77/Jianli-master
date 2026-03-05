@@ -47,6 +47,7 @@ import db from './db.js'
 import rateLimit from 'express-rate-limit'
 import authRoutes from './routes/auth.js'
 import applicationsRoutes from './routes/applications.js'
+import promptsRoutes from './routes/prompts.js'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -121,6 +122,7 @@ const authLimiter = rateLimit({
 })
 app.use('/api/auth', authLimiter, authRoutes)
 app.use('/api/applications', applicationsRoutes)
+app.use('/api/prompts', promptsRoutes)
 
 // Routes
 app.post('/api/upload-resume', (req, res, next) => {
@@ -239,13 +241,13 @@ app.post('/api/generate-cover-letter', async (req, res) => {
     if (!apiKey) {
       return res.status(400).json({ error: '请在前端「设置 API Key」中输入 OpenAI API 密钥' })
     }
-    const { resume, jobDescription, prompt, systemPrompt } = req.body
+    const { resume, jobDescription, prompt, systemPrompt, companyInfo } = req.body
 
     if (!resume || !jobDescription) {
       return res.status(400).json({ error: '请提供简历和岗位描述' })
     }
 
-    const coverLetter = await generateCoverLetter(resume, jobDescription, prompt, systemPrompt, apiKey)
+    const coverLetter = await generateCoverLetter(resume, jobDescription, prompt, systemPrompt, apiKey, companyInfo)
     res.json({ coverLetter })
   } catch (error) {
     console.error('Cover letter error:', error)

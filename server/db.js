@@ -36,6 +36,17 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_applications_user_id ON applications(user_id);
+
+  CREATE TABLE IF NOT EXISTS user_prompts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    kind TEXT NOT NULL,
+    data TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    UNIQUE(user_id, kind)
+  );
+  CREATE INDEX IF NOT EXISTS idx_user_prompts_user_id ON user_prompts(user_id);
 `)
 
 export default db

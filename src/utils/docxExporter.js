@@ -65,6 +65,78 @@ export async function exportCoverLetterToDocx(coverLetter, fileName = 'Cover_Let
 }
 
 /**
+ * 导出简历为 DOCX 文件
+ * @param {string} resumeText - 简历正文
+ * @param {string} companyName - 公司名称（用于文件名，可选）
+ * @param {string} position - 职位（用于文件名，可选）
+ */
+export async function exportResumeToDocxFormatted(resumeText, companyName = '', position = '') {
+  try {
+    let fileName = 'Resume_Optimized'
+    if (companyName) fileName += `_${String(companyName).replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')}`
+    if (position) fileName += `_${String(position).replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')}`
+    fileName += '.docx'
+
+    const lines = (resumeText || '').split('\n')
+    const docParagraphs = []
+
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (trimmed.length === 0) {
+        docParagraphs.push(
+          new Paragraph({
+            children: [new TextRun({ text: '', break: 1 })],
+            spacing: { after: 100 },
+          })
+        )
+        continue
+      }
+      docParagraphs.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: trimmed,
+              font: 'Times New Roman',
+              size: 22,
+            }),
+          ],
+          alignment: AlignmentType.LEFT,
+          spacing: { after: 150 },
+        })
+      )
+    }
+
+    if (docParagraphs.length === 0) {
+      docParagraphs.push(
+        new Paragraph({
+          children: [new TextRun({ text: resumeText || 'Resume', font: 'Times New Roman', size: 22 })],
+        })
+      )
+    }
+
+    const doc = new Document({
+      sections: [
+        {
+          properties: {
+            page: {
+              margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
+            },
+          },
+          children: docParagraphs,
+        },
+      ],
+    })
+
+    const blob = await Packer.toBlob(doc)
+    saveAs(blob, fileName)
+    return true
+  } catch (error) {
+    console.error('导出简历 DOCX 失败:', error)
+    throw new Error('导出简历 DOCX 失败: ' + error.message)
+  }
+}
+
+/**
  * 导出推荐信为 DOCX 文件（带格式优化）
  * @param {string} coverLetter - 推荐信内容
  * @param {string} companyName - 公司名称（用于文件名）

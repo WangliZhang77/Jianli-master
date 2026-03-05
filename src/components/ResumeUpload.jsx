@@ -14,6 +14,8 @@ function ResumeUpload({
   onResumePromptChange,
   selectedCoverLetterPromptId = 'default',
   onCoverLetterPromptChange,
+  onSyncPromptsToServer,
+  promptsSyncedAt = 0,
 }) {
   const [file, setFile] = useState(null)
   const [uploading, setUploading] = useState(false)
@@ -23,6 +25,7 @@ function ResumeUpload({
   const { t } = useI18n()
   const resumePrompts = getResumePrompts()
   const coverLetterPrompts = getCoverLetterPrompts()
+  void promptsSyncedAt
   const selectedResumePrompt = getResumePromptById(selectedResumePromptId) || resumePrompts[0]
   const selectedCoverLetterPrompt = getCoverLetterPromptById(selectedCoverLetterPromptId) || coverLetterPrompts[0]
 
@@ -202,6 +205,7 @@ function ResumeUpload({
             setShowResumePromptManager(false)
           }}
           onClose={() => setShowResumePromptManager(false)}
+          onAfterSave={onSyncPromptsToServer ? (data) => onSyncPromptsToServer('resume', data) : undefined}
         />
       )}
       {showCoverLetterPromptManager && (
@@ -212,6 +216,7 @@ function ResumeUpload({
             setShowCoverLetterPromptManager(false)
           }}
           onClose={() => setShowCoverLetterPromptManager(false)}
+          onAfterSave={onSyncPromptsToServer ? (data) => onSyncPromptsToServer('coverLetter', data) : undefined}
         />
       )}
     </div>

@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
-import { getPrompts, savePrompt, deletePrompt } from '../utils/resumePromptStorage'
+import { getPrompts, savePrompt, deletePrompt, resetToDefaultPrompts } from '../utils/resumePromptStorage'
 import AppleButton from './AppleButton'
 import toast from 'react-hot-toast'
 import { useI18n } from '../contexts/I18nContext'
 
-function ResumePromptManager({ selectedPromptId, onSelectPrompt, onClose }) {
+function ResumePromptManager({ selectedPromptId, onSelectPrompt, onClose, onAfterSave }) {
   const { t } = useI18n()
   const [prompts, setPrompts] = useState([])
   const [editingPrompt, setEditingPrompt] = useState(null)
@@ -43,6 +43,7 @@ function ResumePromptManager({ selectedPromptId, onSelectPrompt, onClose }) {
         prompt: '',
         systemPrompt: '你是一位专业的简历优化专家，擅长根据岗位要求优化简历内容。'
       })
+      onAfterSave?.(getPrompts())
     } catch (error) {
       toast.error(t('saveFailedShort') + ': ' + error.message)
     }
@@ -59,6 +60,7 @@ function ResumePromptManager({ selectedPromptId, onSelectPrompt, onClose }) {
       if (selectedPromptId === id) {
         onSelectPrompt('default')
       }
+      onAfterSave?.(getPrompts())
     } catch (error) {
       toast.error(t('deleteFailedShort') + ': ' + error.message)
     }
@@ -72,6 +74,18 @@ function ResumePromptManager({ selectedPromptId, onSelectPrompt, onClose }) {
       systemPrompt: prompt.systemPrompt || '你是一位专业的简历优化专家，擅长根据岗位要求优化简历内容。'
     })
     setShowAddForm(true)
+  }
+
+  const handleResetToDefault = () => {
+    if (!confirm(t('confirmResetPromptsToDefault'))) return
+    try {
+      resetToDefaultPrompts()
+      loadPrompts()
+      toast.success(t('resetPromptsSuccess'))
+      onAfterSave?.(getPrompts())
+    } catch (error) {
+      toast.error(t('saveFailedShort') + ': ' + error.message)
+    }
   }
 
   const defaultForm = { name: '', prompt: '', systemPrompt: '你是一位专业的简历优化专家，擅长根据岗位要求优化简历内容。' }
@@ -128,9 +142,14 @@ function ResumePromptManager({ selectedPromptId, onSelectPrompt, onClose }) {
             </div>
           )}
           <div className="space-y-3">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center flex-wrap gap-2">
               <h3 className="font-bold text-white">{t('savedTemplates')}</h3>
-              {!showAddForm && <AppleButton onClick={() => { setShowAddForm(true); setEditingPrompt(null) }} className="!py-2 text-sm">{t('addNewTemplate')}</AppleButton>}
+              {!showAddForm && (
+                <div className="flex gap-2">
+                  <AppleButton variant="secondary" onClick={handleResetToDefault} className="!py-2 text-sm">{t('resetPromptsToDefault')}</AppleButton>
+                  <AppleButton onClick={() => { setShowAddForm(true); setEditingPrompt(null) }} className="!py-2 text-sm">{t('addNewTemplate')}</AppleButton>
+                </div>
+              )}
             </div>
             {prompts.map((prompt) => (
               <div key={prompt.id} className={`p-4 border rounded-xl ${selectedPromptId === prompt.id ? 'border-white/30 bg-white/10' : 'border-white/10 bg-white/5'}`}>

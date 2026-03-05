@@ -9,7 +9,7 @@ function getOpenAIClient(apiKey) {
   return new OpenAI({ apiKey: key })
 }
 
-export async function generateCoverLetter(resume, jobDescription, customPrompt, systemPrompt, apiKey) {
+export async function generateCoverLetter(resume, jobDescription, customPrompt, systemPrompt, apiKey, companyInfo = '') {
   const openai = getOpenAIClient(apiKey)
   const jd = truncateJobDescription(jobDescription)
   const resumeText = truncateResumeForCoverLetter(resume)
@@ -21,6 +21,7 @@ export async function generateCoverLetter(resume, jobDescription, customPrompt, 
       prompt = customPrompt
         .replace(/{jobDescription}/g, jd)
         .replace(/{resume}/g, resumeText)
+        .replace(/{companyInfo}/g, companyInfo || '')
       systemMessage = systemPrompt || '求职信专家，按简历与岗位写推荐信。'
     } else {
       systemMessage = 'Cover letter writer. Output only the letter, 300-500 words, English.'

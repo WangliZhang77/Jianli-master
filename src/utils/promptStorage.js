@@ -1,17 +1,8 @@
 // 提示词模板存储工具
 const STORAGE_KEY = 'coverLetterPrompts'
 
-export function getPrompts() {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) {
-      return JSON.parse(stored)
-    }
-  } catch (error) {
-    console.error('读取提示词失败:', error)
-  }
-  
-  // 返回默认提示词
+/** 内置的默认推荐信提示词（用于恢复默认） */
+export function getDefaultPrompts() {
   return [
     {
       id: 'default',
@@ -60,8 +51,130 @@ Please return only the cover letter content without any additional explanations 
 
 请直接返回推荐信内容，不要添加额外的说明文字。`,
       systemPrompt: '你是一位专业的求职信撰写专家，擅长根据简历和岗位要求撰写有说服力的推荐信。'
+    },
+    {
+      id: 'nz-style',
+      name: '新西兰风格推荐信（NZ Hiring Manager）',
+      prompt: `You are a senior HR manager and technical hiring lead with 10+ years of experience hiring software and IT professionals in New Zealand, with deep familiarity with NZ hiring culture and expectations.
+
+I am applying for the following role:
+
+Job Description:
+{jobDescription}
+
+Company Information (JD / website / brief research, if available):
+{companyInfo}
+
+My Resume:
+{resume}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PRIMARY OBJECTIVE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Write a tailored, professional New Zealand–style cover letter that:
+- Survives initial HR screening (30–60 second scan)
+- Clearly demonstrates role fit and relevance
+- Sounds natural, concise, and credible to a local NZ hiring manager
+- Encourages the reader to proceed to interview review
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STRUCTURE & LENGTH (STRICT)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- Length: 250–350 words maximum
+- Format: One page only
+- Structure: 4 clear paragraphs
+- Each paragraph: 2–4 sentences
+
+Required paragraph flow:
+1. Application intent & role alignment
+2. Most relevant technical or project experience
+3. Collaboration / communication / customer-facing experience
+4. Polite close with interview request
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONTENT RULES (NZ-SPECIFIC)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Mandatory Tailoring (Critical)
+- The cover letter MUST be tailored to the specific role and company.
+- The opening paragraph must clearly state: the role being applied for (matching the JD title), why my background is relevant to THIS role.
+- Mention the company, product, team, or domain at least once.
+- Avoid generic or reusable template language.
+
+2. Relevance Over Repetition
+- DO NOT repeat my resume or list my full work history.
+- Select only 2 key strengths or experiences that best match the JD.
+- Explicitly connect each example to a responsibility or requirement in the JD.
+
+3. Evidence Over Adjectives
+- Avoid vague traits such as "hard-working", "passionate", "fast learner".
+- Instead, use concise STAR-style evidence: what I did (action), why it mattered (problem), what changed (result or outcome).
+- Use realistic, defensible outcomes where possible (ranges acceptable).
+
+4. Communication & Collaboration (Highly Valued in NZ)
+- Include at least one example demonstrating direct collaboration with stakeholders, customers, or business users; how feedback or discussion influenced technical or product decisions.
+- Emphasize clarity, initiative, and the ability to work without heavy supervision.
+
+5. Professional, Direct NZ Tone
+- Tone should be professional, clear, confident but not sales-heavy.
+- Avoid overly promotional or exaggerated language.
+- Write in plain, straightforward English.
+
+6. Proper Addressing
+- Address the letter to a named Hiring Manager if known.
+- If not known, use "Dear Hiring Manager".
+- NEVER use "To whom it may concern".
+
+7. Closing & Call to Action
+- End with a polite, professional close: express appreciation for consideration, clearly state interest in discussing the role further.
+- Example intent (do not copy verbatim): "I would welcome the opportunity to discuss how my experience could contribute to your team."
+
+8. Exclusions (Important)
+- Do NOT mention: salary expectations (unless explicitly requested), visa details (unless explicitly required), unrelated personal information.
+- Do NOT include emojis, bullet points, or headings.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+OUTPUT RULES (CRITICAL)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- Output ONLY the finalized cover letter text
+- No explanations, no analysis, no meta commentary
+- Use standard business letter formatting
+- Language: professional, concise, New Zealand–appropriate English
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FINAL SUCCESS CRITERIA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The cover letter should:
+- Read naturally to a New Zealand HR manager
+- Clearly demonstrate role fit within the first paragraph
+- Use concrete examples instead of generic claims
+- Be easy to scan, easy to understand, and easy to say "yes" to`,
+      systemPrompt: 'You are a senior HR manager and technical hiring lead with 10+ years of experience in New Zealand hiring. You write tailored, professional NZ-style cover letters. Output only the cover letter text; no meta commentary.'
     }
   ]
+}
+
+export function getPrompts() {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored) {
+      return JSON.parse(stored)
+    }
+  } catch (error) {
+    console.error('读取提示词失败:', error)
+  }
+  return getDefaultPrompts()
+}
+
+/** 恢复为内置的默认推荐信模板（会覆盖当前保存的列表） */
+export function resetToDefaultPrompts() {
+  const defaults = getDefaultPrompts()
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(defaults))
+  return defaults
 }
 
 export function savePrompt(prompt) {
