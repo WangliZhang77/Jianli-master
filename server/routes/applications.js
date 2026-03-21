@@ -2,6 +2,11 @@ import express from 'express'
 import db from '../db.js'
 import { requireAuth } from '../middleware/auth.js'
 import { classifyApplicationsBatch } from '../services/applicationClassificationService.js'
+import {
+  buildInsightStatsFromRows,
+  fingerprintForInsight,
+  generateDeliveryPersonaInsight,
+} from '../services/applicationInsightService.js'
 
 const router = express.Router()
 
@@ -163,6 +168,99 @@ router.post('/classify', async (req, res) => {
     res.json({ ok: true, skipped: false, updated })
   } catch (e) {
     console.error('Classify applications error:', e)
+    res.status(500).json({ error: e.message })
+  }
+})
+
+const INSIGHT_KIND = 'application_insight'
+const ONE_DAY_MS = 24 * 60 * 60 * 1000
+
+/**
+ * POST /api/applications/insights
+ * body: { apiKey?: string, force?: boolean, locale?: 'zh'|'en' }
+ * 基于全部投递记录 + AI 分类字段，生成日均投递、取向与「投递画像」；结果缓存 24h（或记录变更后失效）
+ */
+router.post('/insights', async (req, res) => {
+  try {
+    const apiKey = req.body?.apiKey || process.env.OPENAI_API_KEY
+    if (!apiKey) {
+      return res.status(400).json({ error: '请在前端设置 OpenAI API Key 或在服务端配置 OPENAI_API_KEY' })
+    }
+    const force = req.body?.force === true
+    const locale = req.body?.locale === 'en' ? 'en' : 'zh'
+
+    const rows = db
+      .prepare(
+        `SELECT id, date, job_category_ai, job_seniority_ai, created_at AS createdAt, classification_at AS classificationAt
+         FROM applications WHERE user_id = ? ORDER BY created_at DESC`
+      )
+      .all(req.user.id)
+
+    const stats = buildInsightStatsFromRows(rows)
+    if (stats.total === 0) {
+      return res.json({
+        ok: true,
+        stats,
+        insight: '',
+        cached: false,
+        generatedAt: null,
+      })
+    }
+
+    const fp = fingerprintForInsight(rows)
+    if (!force) {
+      const cachedRow = db
+        .prepare('SELECT data FROM user_prompts WHERE user_id = ? AND kind = ?')
+        .get(req.user.id, INSIGHT_KIND)
+      if (cachedRow?.data) {
+        try {
+          const cached = JSON.parse(cachedRow.data)
+          const genTs = cached.generatedAt ? new Date(cached.generatedAt).getTime() : 0
+          const fresh = genTs && Date.now() - genTs < ONE_DAY_MS
+          const localeOk = cached.locale === locale || (!cached.locale && locale === 'zh')
+          if (
+            cached.fingerprint === fp &&
+            fresh &&
+            typeof cached.text === 'string' &&
+            cached.text.length > 0 &&
+            localeOk
+          ) {
+            return res.json({
+              ok: true,
+              stats,
+              insight: cached.text,
+              cached: true,
+              generatedAt: cached.generatedAt,
+            })
+          }
+        } catch (_) {
+          /* 重新生成 */
+        }
+      }
+    }
+
+    const text = await generateDeliveryPersonaInsight(stats, apiKey, locale)
+    const generatedAt = new Date().toISOString()
+    const payload = JSON.stringify({
+      text,
+      generatedAt,
+      fingerprint: fp,
+      locale,
+    })
+    db.prepare(
+      `INSERT INTO user_prompts (user_id, kind, data, updated_at) VALUES (?, ?, ?, datetime('now'))
+       ON CONFLICT(user_id, kind) DO UPDATE SET data = excluded.data, updated_at = datetime('now')`
+    ).run(req.user.id, INSIGHT_KIND, payload)
+
+    res.json({
+      ok: true,
+      stats,
+      insight: text,
+      cached: false,
+      generatedAt,
+    })
+  } catch (e) {
+    console.error('Application insights error:', e)
     res.status(500).json({ error: e.message })
   }
 })

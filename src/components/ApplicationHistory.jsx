@@ -11,6 +11,8 @@ import {
 } from '../utils/applicationStorage'
 import { classifyJobCategory } from '../utils/jobCategoryClassifier'
 import { getAiCategoryCounts, getSeniorityCounts } from '../utils/applicationAiStats'
+import { computeApplicationInsightStats } from '../utils/applicationInsightStats'
+import InsightMarkdownLight from './InsightMarkdownLight'
 import AppleButton from './AppleButton'
 import toast from 'react-hot-toast'
 import { useAuth } from '../contexts/AuthContext'
@@ -30,6 +32,11 @@ function ApplicationHistory({ openaiApiKey = '' }) {
   const [importing, setImporting] = useState(false)
   const [classifying, setClassifying] = useState(false)
   const autoClassifyAttempted = useRef(false)
+  const [insightText, setInsightText] = useState('')
+  const [insightLoading, setInsightLoading] = useState(false)
+  const [insightGeneratedAt, setInsightGeneratedAt] = useState(null)
+  const [insightCached, setInsightCached] = useState(false)
+  const insightAutoAttempted = useRef(false)
 
   const localCount = token ? getApplications().length : 0
 
@@ -95,6 +102,85 @@ function ApplicationHistory({ openaiApiKey = '' }) {
     })()
   }, [token, openaiApiKey, applications.length, fetchWithAuth, loadApplications])
 
+  const handleFetchInsight = async (force) => {
+    if (!openaiApiKey?.trim()) {
+      toast.error(t('insightNeedKey'))
+      return
+    }
+    if (!token) {
+      toast.error(t('insightLoginHint'))
+      return
+    }
+    setInsightLoading(true)
+    setInsightCached(false)
+    try {
+      const res = await fetchWithAuth('/api/applications/insights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiKey: openaiApiKey.trim(),
+          force: !!force,
+          locale: locale === 'en' ? 'en' : 'zh',
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || t('loadFailed'))
+      setInsightText(data.insight || '')
+      setInsightGeneratedAt(data.generatedAt || null)
+      setInsightCached(!!data.cached)
+      if (data.insight && !data.cached) {
+        toast.success(locale === 'en' ? 'Insight updated' : '画像已更新')
+      } else if (data.cached && data.insight) {
+        toast(t('insightFromCache'))
+      }
+    } catch (e) {
+      toast.error(e.message || String(e))
+    } finally {
+      setInsightLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    insightAutoAttempted.current = false
+    setInsightText('')
+    setInsightGeneratedAt(null)
+    setInsightCached(false)
+  }, [locale])
+
+  /** 登录且有 Key 时自动拉一次画像（服务端 24h 缓存，与分类策略一致） */
+  useEffect(() => {
+    if (applications.length === 0) {
+      insightAutoAttempted.current = false
+      setInsightText('')
+      setInsightGeneratedAt(null)
+      return
+    }
+    if (!token || !openaiApiKey?.trim()) return
+    if (insightAutoAttempted.current) return
+    insightAutoAttempted.current = true
+    ;(async () => {
+      try {
+        const res = await fetchWithAuth('/api/applications/insights', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            apiKey: openaiApiKey.trim(),
+            force: false,
+            locale: locale === 'en' ? 'en' : 'zh',
+          }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (res.ok && data.insight) {
+          setInsightText(data.insight)
+          setInsightGeneratedAt(data.generatedAt || null)
+          setInsightCached(!!data.cached)
+        }
+      } catch (_) {
+        /* 可手动点按钮 */
+      }
+    })()
+  }, [token, openaiApiKey, applications.length, fetchWithAuth, locale])
+
   const handleAiClassify = async (force) => {
     if (!openaiApiKey?.trim()) {
       toast.error(t('aiClassifyNoKey'))
@@ -114,6 +200,29 @@ function ApplicationHistory({ openaiApiKey = '' }) {
       } else if (data.updated > 0) {
         toast.success(t('aiClassifyDone', { n: data.updated }))
         await loadApplications()
+        insightAutoAttempted.current = false
+        ;(async () => {
+          try {
+            if (!openaiApiKey?.trim() || !token) return
+            const ir = await fetchWithAuth('/api/applications/insights', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                apiKey: openaiApiKey.trim(),
+                force: false,
+                locale: locale === 'en' ? 'en' : 'zh',
+              }),
+            })
+            const idata = await ir.json().catch(() => ({}))
+            if (ir.ok && idata.insight) {
+              setInsightText(idata.insight)
+              setInsightGeneratedAt(idata.generatedAt || null)
+              setInsightCached(!!idata.cached)
+            }
+          } catch (_) {
+            /* 画像可稍后手动刷新 */
+          }
+        })()
       } else {
         toast(t('aiClassifySkipped'))
       }
@@ -257,6 +366,9 @@ function ApplicationHistory({ openaiApiKey = '' }) {
     [seniorityCounts]
   )
 
+  /** 画像统计：始终用全部投递，与后端 /insights 一致 */
+  const insightStats = useMemo(() => computeApplicationInsightStats(applications), [applications])
+
   // 获取当前月的日期和投递数量
   const getCalendarDays = () => {
     const year = selectedDate.getFullYear()
@@ -389,6 +501,97 @@ function ApplicationHistory({ openaiApiKey = '' }) {
               />
             )}
             <span className="text-sm text-slate-400">{t('filterCount', { n: filteredApplications.length })}</span>
+          </div>
+        </div>
+      )}
+
+      {viewMode === 'chart' && totalCount > 0 && (
+        <div className="bg-gradient-to-br from-slate-800/90 to-slate-900/90 border border-cyan-500/25 rounded-xl p-6 space-y-6">
+          <div>
+            <h3 className="text-xl font-bold text-white">{t('insightTitle')}</h3>
+            <p className="text-sm text-slate-400 mt-1">{t('insightSubtitle')}</p>
+            <p className="text-xs text-slate-500 mt-2">{t('insightBaseAll')}</p>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            <div className="rounded-lg bg-white/5 border border-white/10 p-3">
+              <div className="text-xs text-slate-400">{t('insightStat_total')}</div>
+              <div className="text-lg font-bold text-white mt-1">{insightStats.total}</div>
+            </div>
+            <div className="rounded-lg bg-white/5 border border-white/10 p-3">
+              <div className="text-xs text-slate-400">{t('insightStat_activeDays')}</div>
+              <div className="text-lg font-bold text-white mt-1">{insightStats.activeDays}</div>
+            </div>
+            <div className="rounded-lg bg-white/5 border border-white/10 p-3">
+              <div className="text-xs text-slate-400">{t('insightStat_avgActive')}</div>
+              <div className="text-lg font-bold text-cyan-200 mt-1">{insightStats.avgPerActiveDay.toFixed(2)}</div>
+            </div>
+            <div className="rounded-lg bg-white/5 border border-white/10 p-3">
+              <div className="text-xs text-slate-400">{t('insightStat_avg7')}</div>
+              <div className="text-lg font-bold text-cyan-200 mt-1">{insightStats.avgPerDayLast7.toFixed(2)}</div>
+            </div>
+            <div className="rounded-lg bg-white/5 border border-white/10 p-3">
+              <div className="text-xs text-slate-400">{t('insightStat_avg30')}</div>
+              <div className="text-lg font-bold text-cyan-200 mt-1">{insightStats.avgPerDayLast30.toFixed(2)}</div>
+            </div>
+            <div className="rounded-lg bg-white/5 border border-white/10 p-3">
+              <div className="text-xs text-slate-400">{t('insightStat_last7')}</div>
+              <div className="text-lg font-bold text-white mt-1">{insightStats.countLast7}</div>
+            </div>
+            <div className="rounded-lg bg-white/5 border border-white/10 p-3">
+              <div className="text-xs text-slate-400">{t('insightStat_last30')}</div>
+              <div className="text-lg font-bold text-white mt-1">{insightStats.countLast30}</div>
+            </div>
+            <div className="rounded-lg bg-white/5 border border-white/10 p-3 sm:col-span-2 lg:col-span-1">
+              <div className="text-xs text-slate-400">{t('insightStat_peak')}</div>
+              <div className="text-sm font-bold text-amber-200 mt-1">
+                {insightStats.peakDay
+                  ? `${insightStats.peakDay.date} · ${insightStats.peakDay.count}`
+                  : '—'}
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-white/10 pt-6">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <h4 className="text-lg font-semibold text-white">{t('insightAiBlockTitle')}</h4>
+              <div className="flex flex-wrap gap-2">
+                {token && (
+                  <>
+                    <AppleButton
+                      onClick={() => handleFetchInsight(false)}
+                      disabled={insightLoading || !openaiApiKey?.trim()}
+                      className="!bg-cyan-600/90 text-white hover:!bg-cyan-600 disabled:opacity-50"
+                    >
+                      {insightLoading ? t('insightLoading') : `✨ ${t('insightFetchBtn')}`}
+                    </AppleButton>
+                    <AppleButton variant="secondary" onClick={() => handleFetchInsight(true)} disabled={insightLoading || !openaiApiKey?.trim()}>
+                      {t('insightRefreshBtn')}
+                    </AppleButton>
+                  </>
+                )}
+              </div>
+            </div>
+            {!token && <p className="text-sm text-slate-400 mb-3">{t('insightLoginHint')}</p>}
+            {token && !openaiApiKey?.trim() && <p className="text-sm text-amber-200/90 mb-3">{t('insightNeedKey')}</p>}
+            {insightGeneratedAt && (
+              <p className="text-xs text-slate-500 mb-3">
+                {t('insightGeneratedAt')}: {new Date(insightGeneratedAt).toLocaleString(dateLocale)}
+                {insightCached ? ` · ${t('insightCachedBadge')}` : ''}
+              </p>
+            )}
+            {insightLoading && !insightText && (
+              <div className="text-slate-400 text-sm py-6">{t('insightLoading')}</div>
+            )}
+            {insightText ? (
+              <div className="rounded-xl bg-black/20 border border-white/10 p-4">
+                <InsightMarkdownLight text={insightText} />
+              </div>
+            ) : (
+              !insightLoading &&
+              token &&
+              openaiApiKey?.trim() && <p className="text-sm text-slate-500">{t('insightEmptyHint')}</p>
+            )}
           </div>
         </div>
       )}
