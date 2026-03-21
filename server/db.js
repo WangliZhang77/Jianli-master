@@ -49,4 +49,15 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_user_prompts_user_id ON user_prompts(user_id);
 `)
 
+function ensureColumn(table, column, typeSql) {
+  const info = db.prepare(`PRAGMA table_info(${table})`).all()
+  if (!info.some((c) => c.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${typeSql}`)
+  }
+}
+
+ensureColumn('applications', 'job_category_ai', 'TEXT')
+ensureColumn('applications', 'job_seniority_ai', 'TEXT')
+ensureColumn('applications', 'classification_at', 'TEXT')
+
 export default db

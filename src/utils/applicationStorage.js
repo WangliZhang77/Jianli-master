@@ -15,6 +15,17 @@ export function getApplications() {
   return []
 }
 
+/** 判断是否与已有记录重复（公司 + 职位一致视为重复） */
+export function isDuplicateApplication(applications, companyName, position) {
+  const n = (s) => (s || '').trim().toLowerCase()
+  const company = n(companyName)
+  const pos = n(position)
+  if (!company && !pos) return false
+  return applications.some(
+    (app) => n(app.companyName) === company && n(app.position) === pos
+  )
+}
+
 export function saveApplication(application) {
   try {
     const applications = getApplications()
@@ -72,15 +83,22 @@ export function getApplicationsByMonth(year, month) {
   })
 }
 
-export function getDailyCounts() {
-  const applications = getApplications()
+/**
+ * 按自然日统计投递次数。
+ * @param {Array<{ date: string }>|null|undefined} applicationsOverride 传入时优先使用（登录后从服务端拉取的列表）；不传则从 localStorage 读
+ */
+export function getDailyCounts(applicationsOverride) {
+  const applications = Array.isArray(applicationsOverride)
+    ? applicationsOverride
+    : getApplications()
   const counts = {}
-  
-  applications.forEach(app => {
+
+  applications.forEach((app) => {
+    if (!app?.date) return
     const date = new Date(app.date).toDateString()
     counts[date] = (counts[date] || 0) + 1
   })
-  
+
   return counts
 }
 

@@ -16,6 +16,8 @@ import { useI18n } from './contexts/I18nContext'
 import { useAuth } from './contexts/AuthContext'
 import Auth from './components/Auth'
 import OnboardingOverlay, { getOnboardingDone } from './components/OnboardingOverlay'
+import RecordSuccessBanner from './components/RecordSuccessBanner'
+import { getApplications, saveApplication, isDuplicateApplication } from './utils/applicationStorage'
 import { Sparkles } from 'lucide-react'
 
 function App() {
@@ -37,6 +39,50 @@ function App() {
   const [performanceMode, setPerformanceMode] = useState(true)
   const [promptsSyncedAt, setPromptsSyncedAt] = useState(0)
   const [onboardingDone, setOnboardingDone] = useState(() => getOnboardingDone())
+  const [recordBannerMessage, setRecordBannerMessage] = useState(null)
+
+  const autoRecordApplication = useCallback(
+    async (companyNameVal, positionVal, jobDesc, resumeVal, coverLetterVal) => {
+      let list = []
+      try {
+        if (token) {
+          const res = await fetchWithAuth('/api/applications')
+          if (res.ok) list = await res.json()
+        } else {
+          list = getApplications()
+        }
+      } catch (_) {
+        list = []
+      }
+      if (isDuplicateApplication(list, companyNameVal, positionVal)) {
+        setRecordBannerMessage(t('recordDuplicate'))
+        return
+      }
+      const payload = {
+        companyName: (companyNameVal || '').trim(),
+        position: (positionVal || '').trim(),
+        jobDescription: jobDesc || '',
+        resume: resumeVal || '',
+        coverLetter: coverLetterVal || '',
+      }
+      try {
+        if (token) {
+          const res = await fetchWithAuth('/api/applications', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          })
+          if (!res.ok) throw new Error('Save failed')
+        } else {
+          saveApplication(payload)
+        }
+        setRecordBannerMessage(t('recordAutoSaved'))
+      } catch (_) {
+        setRecordBannerMessage(t('saveFailed'))
+      }
+    },
+    [token, fetchWithAuth, t]
+  )
 
   useEffect(() => {
     if (!token) return
@@ -143,8 +189,14 @@ function App() {
       setPosition(data.position || '')
       setOptimizedResume(data.optimizedResume || '')
       setCoverLetter(data.coverLetter || '')
-      // 一键流程完成后先查看优化简历，再到推荐信
       setActiveTab('resume')
+      autoRecordApplication(
+        data.companyName || '',
+        data.position || '',
+        jobDescription,
+        data.optimizedResume || '',
+        data.coverLetter || ''
+      )
     } catch (error) {
       toast.error(t('oneClickFailed') + ': ' + error.message)
     } finally {
@@ -232,6 +284,7 @@ function App() {
       if (data.error) throw new Error(data.error)
       setCoverLetter(data.coverLetter)
       setActiveTab('coverLetter')
+      autoRecordApplication(parsed.companyName, parsed.position, jobDescription, optimizedResume, data.coverLetter)
     } catch (error) {
       alert(t('coverLetterFailed') + ': ' + error.message)
     } finally {
@@ -426,12 +479,19 @@ function App() {
                   />
                 )}
 
-                {activeTab === 'history' && <ApplicationHistory />}
+                {activeTab === 'history' && <ApplicationHistory openaiApiKey={openaiApiKey} />}
               </div>
             </div>
           </GlassCard>
         </div>
       </div>
+
+      {recordBannerMessage && (
+        <RecordSuccessBanner
+          message={recordBannerMessage}
+          onClose={() => setRecordBannerMessage(null)}
+        />
+      )}
 
       {!onboardingDone && (
         <OnboardingOverlay onClose={() => setOnboardingDone(true)} />

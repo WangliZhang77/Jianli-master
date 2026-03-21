@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import {
   getApplications,
   deleteApplication,
@@ -9,12 +9,14 @@ import {
   exportToCSV,
   exportToJSON,
 } from '../utils/applicationStorage'
+import { classifyJobCategory } from '../utils/jobCategoryClassifier'
+import { getAiCategoryCounts, getSeniorityCounts } from '../utils/applicationAiStats'
 import AppleButton from './AppleButton'
 import toast from 'react-hot-toast'
 import { useAuth } from '../contexts/AuthContext'
 import { useI18n } from '../contexts/I18nContext'
 
-function ApplicationHistory() {
+function ApplicationHistory({ openaiApiKey = '' }) {
   const { token, fetchWithAuth } = useAuth()
   const { locale, t } = useI18n()
   const dateLocale = locale === 'en' ? 'en-US' : 'zh-CN'
@@ -26,8 +28,26 @@ function ApplicationHistory() {
   const [filterType, setFilterType] = useState('all') // 'all', 'year', 'month', 'day'
   const [filterDate, setFilterDate] = useState('')
   const [importing, setImporting] = useState(false)
+  const [classifying, setClassifying] = useState(false)
+  const autoClassifyAttempted = useRef(false)
 
   const localCount = token ? getApplications().length : 0
+
+  const displayCategoryLabel = (app) => {
+    if (app.jobCategoryAi) {
+      const key = `jobAiCategory_${app.jobCategoryAi}`
+      const label = t(key)
+      return label === key ? app.jobCategoryAi : label
+    }
+    return t(`jobCategory_${classifyJobCategory(app)}`)
+  }
+
+  const displaySeniorityLabel = (app) => {
+    if (!app.jobSeniorityAi) return t('seniority_unclassified')
+    const key = `seniority_${app.jobSeniorityAi}`
+    const label = t(key)
+    return label === key ? app.jobSeniorityAi : label
+  }
 
   const loadApplications = useCallback(async () => {
     if (token) {
@@ -43,11 +63,80 @@ function ApplicationHistory() {
     } else {
       setApplications(getApplications())
     }
-  }, [token])
+  }, [token, fetchWithAuth, t])
 
   useEffect(() => {
     loadApplications()
   }, [loadApplications])
+
+  /** 登录且有记录时：自动触发一次 AI 分类（服务端：未分类 / 超过 24h 才实际调用模型） */
+  useEffect(() => {
+    if (applications.length === 0) {
+      autoClassifyAttempted.current = false
+      return
+    }
+    if (!token || !openaiApiKey?.trim()) return
+    if (autoClassifyAttempted.current) return
+    autoClassifyAttempted.current = true
+    ;(async () => {
+      try {
+        const res = await fetchWithAuth('/api/applications/classify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ apiKey: openaiApiKey.trim(), force: false }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (res.ok && data.updated > 0) {
+          await loadApplications()
+        }
+      } catch (_) {
+        /* 静默失败，用户可手动点刷新 */
+      }
+    })()
+  }, [token, openaiApiKey, applications.length, fetchWithAuth, loadApplications])
+
+  const handleAiClassify = async (force) => {
+    if (!openaiApiKey?.trim()) {
+      toast.error(t('aiClassifyNoKey'))
+      return
+    }
+    setClassifying(true)
+    try {
+      const res = await fetchWithAuth('/api/applications/classify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: openaiApiKey.trim(), force: !!force }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || t('loadFailed'))
+      if (data.skipped) {
+        toast(t('aiClassifySkipped'))
+      } else if (data.updated > 0) {
+        toast.success(t('aiClassifyDone', { n: data.updated }))
+        await loadApplications()
+      } else {
+        toast(t('aiClassifySkipped'))
+      }
+    } catch (e) {
+      toast.error(e.message || String(e))
+    } finally {
+      setClassifying(false)
+    }
+  }
+
+  /** 最近 N 个自然日（含今天）内的投递数 */
+  const countApplicationsInLastDays = (apps, days) => {
+    if (!Array.isArray(apps) || days < 1) return 0
+    const end = new Date()
+    end.setHours(23, 59, 59, 999)
+    const start = new Date(end)
+    start.setDate(start.getDate() - (days - 1))
+    start.setHours(0, 0, 0, 0)
+    return apps.filter((app) => {
+      const d = new Date(app.date)
+      return !Number.isNaN(d.getTime()) && d >= start && d <= end
+    }).length
+  }
 
   const handleDelete = async (id) => {
     if (!confirm(t('confirmDelete'))) {
@@ -143,8 +232,12 @@ function ApplicationHistory() {
     }
   }
 
-  const dailyCounts = useMemo(() => getDailyCounts(), [applications])
+  const dailyCounts = useMemo(() => getDailyCounts(applications), [applications])
   const totalCount = applications.length
+
+  const recent7 = useMemo(() => countApplicationsInLastDays(applications, 7), [applications])
+  const recent30 = useMemo(() => countApplicationsInLastDays(applications, 30), [applications])
+  const recent60 = useMemo(() => countApplicationsInLastDays(applications, 60), [applications])
 
   // 根据筛选条件过滤应用记录
   const filteredApplications = useMemo(() => {
@@ -155,6 +248,9 @@ function ApplicationHistory() {
   }, [applications, filterType, filterDate])
 
   const positionCounts = useMemo(() => getPositionCounts(filteredApplications, locale), [filteredApplications, locale])
+
+  const aiCategoryCounts = useMemo(() => getAiCategoryCounts(filteredApplications), [filteredApplications])
+  const seniorityCounts = useMemo(() => getSeniorityCounts(filteredApplications), [filteredApplications])
 
   // 获取当前月的日期和投递数量
   const getCalendarDays = () => {
@@ -191,6 +287,19 @@ function ApplicationHistory() {
         <div>
           <h2 className="text-2xl font-bold text-white">{t('historyTitle')}</h2>
           <p className="text-slate-300 mt-1">{t('totalRecords', { n: totalCount })}</p>
+          {totalCount > 0 && (
+            <div className="mt-3 flex flex-wrap gap-3 text-sm text-slate-400">
+              <span className="px-3 py-1 rounded-lg bg-white/5 border border-white/10">
+                {t('recentApplicationsSummary', { days: 7, count: recent7 })}
+              </span>
+              <span className="px-3 py-1 rounded-lg bg-white/5 border border-white/10">
+                {t('recentApplicationsSummary', { days: 30, count: recent30 })}
+              </span>
+              <span className="px-3 py-1 rounded-lg bg-white/5 border border-white/10">
+                {t('recentApplicationsSummary', { days: 60, count: recent60 })}
+              </span>
+            </div>
+          )}
         </div>
         <div className="flex flex-wrap gap-2">
           <AppleButton onClick={() => setViewMode('list')} variant={viewMode === 'list' ? 'primary' : 'secondary'}>
@@ -216,6 +325,24 @@ function ApplicationHistory() {
             >
               {importing ? t('importingLabel') : t('importLocalRecordsCount', { n: localCount })}
             </AppleButton>
+          )}
+          {token && totalCount > 0 && (
+            <>
+              <AppleButton
+                onClick={() => handleAiClassify(false)}
+                disabled={classifying || !openaiApiKey?.trim()}
+                className="!bg-violet-500/90 text-white hover:!bg-violet-500 disabled:opacity-50"
+              >
+                {classifying ? '…' : `🤖 ${t('aiClassifyBtn')}`}
+              </AppleButton>
+              <AppleButton
+                variant="secondary"
+                onClick={() => handleAiClassify(true)}
+                disabled={classifying || !openaiApiKey?.trim()}
+              >
+                {t('aiClassifyForceBtn')}
+              </AppleButton>
+            </>
           )}
         </div>
       </div>
@@ -336,6 +463,79 @@ function ApplicationHistory() {
               })}
             </div>
           )}
+
+          <div className="mt-10 pt-8 border-t border-white/10">
+            <h3 className="text-xl font-bold text-white mb-2">{t('aiStatsTitle')}</h3>
+            <p className="text-sm text-slate-400 mb-6">{t('aiStatsHint')}</p>
+            {aiCategoryCounts.length === 0 || (aiCategoryCounts.length === 1 && aiCategoryCounts[0].category === 'unclassified') ? (
+              <div className="text-center py-8 bg-white/5 rounded-xl text-slate-400 text-sm">
+                {t('jobAiCategory_unclassified')} — {t('aiClassifyBtn')}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {aiCategoryCounts.map((item) => {
+                  const maxCount = aiCategoryCounts[0]?.count || 1
+                  const percentage = (item.count / maxCount) * 100
+                  const key = `jobAiCategory_${item.category}`
+                  const label = t(key) === key ? item.category : t(key)
+                  return (
+                    <div key={item.category} className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-slate-200 truncate flex-1 mr-4">{label}</span>
+                        <span className="text-sm font-bold text-white min-w-[3rem] text-right">
+                          {item.count}
+                          {t('countUnit') ? ` ${t('countUnit')}` : ''}
+                        </span>
+                      </div>
+                      <div className="w-full bg-white/10 rounded-full h-6 overflow-hidden">
+                        <div
+                          className="bg-gradient-to-r from-emerald-500 to-teal-500 h-6 rounded-full flex items-center justify-end pr-2 transition-all duration-500"
+                          style={{ width: `${percentage}%` }}
+                        >
+                          {item.count > 0 && <span className="text-xs text-white font-medium">{item.count}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-10 pt-8 border-t border-white/10">
+            <h3 className="text-xl font-bold text-white mb-6">{t('aiSeniorityTitle')}</h3>
+            {seniorityCounts.length === 0 ? (
+              <div className="text-center py-8 bg-white/5 rounded-xl text-slate-400 text-sm">{t('noRecords')}</div>
+            ) : (
+              <div className="space-y-4">
+                {seniorityCounts.map((item) => {
+                  const maxS = seniorityCounts[0]?.count || 1
+                  const percentage = (item.count / maxS) * 100
+                  const label = t(`seniority_${item.seniority}`)
+                  return (
+                    <div key={item.seniority} className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-slate-200 truncate flex-1 mr-4">{label}</span>
+                        <span className="text-sm font-bold text-white min-w-[3rem] text-right">
+                          {item.count}
+                          {t('countUnit') ? ` ${t('countUnit')}` : ''}
+                        </span>
+                      </div>
+                      <div className="w-full bg-white/10 rounded-full h-6 overflow-hidden">
+                        <div
+                          className="bg-gradient-to-r from-amber-500 to-rose-500 h-6 rounded-full flex items-center justify-end pr-2 transition-all duration-500"
+                          style={{ width: `${percentage}%` }}
+                        >
+                          {item.count > 0 && <span className="text-xs text-white font-medium">{item.count}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
           <div className="mt-6 pt-6 border-t border-white/10 grid grid-cols-3 gap-4 text-center">
             <div><div className="text-2xl font-bold text-white">{filteredApplications.length}</div><div className="text-sm text-slate-400">{t('totalApplications')}</div></div>
             <div><div className="text-2xl font-bold text-white">{positionCounts.length}</div><div className="text-sm text-slate-400">{t('positionTypes')}</div></div>
@@ -360,9 +560,17 @@ function ApplicationHistory() {
               >
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
+                    <div className="flex items-center gap-3 mb-2 flex-wrap">
                       <h3 className="text-lg font-semibold text-white">{app.companyName}</h3>
                       <span className="px-2 py-1 bg-white/10 text-slate-200 text-xs rounded-lg">{app.position}</span>
+                      <span className="px-2 py-1 bg-cyan-500/15 text-cyan-200 text-xs rounded-lg border border-cyan-400/25">
+                        {displayCategoryLabel(app)}
+                      </span>
+                      {app.jobSeniorityAi && (
+                        <span className="px-2 py-1 bg-violet-500/15 text-violet-200 text-xs rounded-lg border border-violet-400/25">
+                          {displaySeniorityLabel(app)}
+                        </span>
+                      )}
                     </div>
                     <p className="text-sm text-slate-400">{new Date(app.date).toLocaleString(dateLocale)}</p>
                     {app.jobDescription && (
@@ -391,6 +599,12 @@ function ApplicationHistory() {
                 <div key={app.id} className="border-b border-white/10 pb-6 last:border-0">
                   <div className="mb-4">
                     <h3 className="text-lg font-semibold text-white mb-2">{app.companyName} - {app.position}</h3>
+                    <p className="text-sm text-slate-300 mb-1">
+                      {t('jobCategoryLabel')}：{displayCategoryLabel(app)}
+                    </p>
+                    <p className="text-sm text-slate-300 mb-1">
+                      {t('jobSeniorityLabel')}：{displaySeniorityLabel(app)}
+                    </p>
                     <p className="text-sm text-slate-400">{new Date(app.date).toLocaleString(dateLocale)}</p>
                   </div>
                   {app.jobDescription && (

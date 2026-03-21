@@ -41,7 +41,7 @@ ${resumeText}`
         { role: 'user', content: prompt },
       ],
       temperature: 0.8,
-      max_tokens: 1000,
+      max_completion_tokens: 1000,
     })
 
     return completion.choices[0].message.content.trim()

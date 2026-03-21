@@ -38,7 +38,7 @@ ${resumeText}
       { role: 'user', content: userContent },
     ],
     temperature: 0.7,
-    max_tokens: 8192,
+    max_completion_tokens: 8192,
     response_format: { type: 'json_object' },
   })
 
@@ -86,7 +86,7 @@ ${resumeText}`
         { role: 'user', content: prompt },
       ],
       temperature: 0.7,
-      max_tokens: 8192,
+      max_completion_tokens: 8192,
     })
 
     return completion.choices[0].message.content.trim()

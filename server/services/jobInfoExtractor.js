@@ -24,7 +24,7 @@ ${jd}`
         { role: 'user', content: prompt },
       ],
       temperature: 0.2,
-      max_tokens: 150,
+      max_completion_tokens: 150,
     })
 
     const responseText = completion.choices[0].message.content.trim()
