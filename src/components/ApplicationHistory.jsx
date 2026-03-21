@@ -251,6 +251,11 @@ function ApplicationHistory({ openaiApiKey = '' }) {
 
   const aiCategoryCounts = useMemo(() => getAiCategoryCounts(filteredApplications), [filteredApplications])
   const seniorityCounts = useMemo(() => getSeniorityCounts(filteredApplications), [filteredApplications])
+  /** 职级条按固定顺序排列，不能用第一项当 max，需取全局最大数量 */
+  const maxSeniorityCount = useMemo(
+    () => Math.max(1, ...seniorityCounts.map((i) => i.count)),
+    [seniorityCounts]
+  )
 
   // 获取当前月的日期和投递数量
   const getCalendarDays = () => {
@@ -509,9 +514,12 @@ function ApplicationHistory({ openaiApiKey = '' }) {
             ) : (
               <div className="space-y-4">
                 {seniorityCounts.map((item) => {
-                  const maxS = seniorityCounts[0]?.count || 1
-                  const percentage = (item.count / maxS) * 100
                   const label = t(`seniority_${item.seniority}`)
+                  const rawPct = maxSeniorityCount > 0 ? (item.count / maxSeniorityCount) * 100 : 0
+                  // 占比很小时仍保留约 5% 宽度，避免细条几乎看不见
+                  const percentage =
+                    item.count <= 0 ? 0 : Math.min(100, Math.max(rawPct, rawPct < 5 ? 5 : rawPct))
+                  const barNarrow = rawPct > 0 && rawPct < 12
                   return (
                     <div key={item.seniority} className="space-y-2">
                       <div className="flex justify-between items-center">
@@ -521,12 +529,14 @@ function ApplicationHistory({ openaiApiKey = '' }) {
                           {t('countUnit') ? ` ${t('countUnit')}` : ''}
                         </span>
                       </div>
-                      <div className="w-full bg-white/10 rounded-full h-6 overflow-hidden">
+                      <div className="w-full bg-white/10 rounded-full h-6 overflow-hidden min-w-0">
                         <div
-                          className="bg-gradient-to-r from-amber-500 to-rose-500 h-6 rounded-full flex items-center justify-end pr-2 transition-all duration-500"
+                          className={`bg-gradient-to-r from-amber-500 to-rose-500 h-6 rounded-full flex items-center transition-all duration-500 ${
+                            barNarrow ? 'justify-start pl-2 min-w-0' : 'justify-end pr-2'
+                          }`}
                           style={{ width: `${percentage}%` }}
                         >
-                          {item.count > 0 && <span className="text-xs text-white font-medium">{item.count}</span>}
+                          {item.count > 0 && <span className="text-xs text-white font-medium shrink-0">{item.count}</span>}
                         </div>
                       </div>
                     </div>
